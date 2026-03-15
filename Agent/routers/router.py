@@ -12,7 +12,7 @@ def route_after_analyze(state: AgentState) -> str:
 
     if task_type in {"explain", "debug", "modify", "refactor"}:
         print("ROUTING TO SEARCH")
-        return task_type
+        return "search"
 
     print("ROUTING TO FINISH")
     return "finish"
