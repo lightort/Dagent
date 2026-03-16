@@ -80,7 +80,8 @@ def scan_workspace_node(state: AgentState) -> AgentState:
 
     updated_state["current_step"] = "scan_workspace"
     updated_state["workspace_root"] = workspace_root
-
+    updated_state["browser_attached"] = False  
+    updated_state["target_url"] = "file:///C:/Users/14590/Desktop/Dagent/WebPage/index.html"
     workspace_summary = {
         "root": workspace_root,
         "directories": [],
@@ -104,6 +105,7 @@ def scan_workspace_node(state: AgentState) -> AgentState:
 
         workspace_summary["files"] = _parse_scanner_output(flat_output)
         workspace_summary["scripts"] = _parse_scanner_output(scripts_output)
+    
 
         updated_state["workspace_summary"] = workspace_summary
         updated_state["error"] = None

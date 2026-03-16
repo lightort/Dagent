@@ -1,34 +1,3 @@
-'''
-user_request:用户原始请求
-
-task_type:当前任务类型（解释代码 / 找 bug / 修改代码 / 重构）
-
-workspace_root:项目根目录
-
-workspace_summary:扫描后的项目概览
-
-candidate_files:可能相关的文件列表
-
-selected_files:当前确定要分析/修改的文件
-
-code_context:提取出来的代码片段
-
-analysis:分析结果
-
-plan:后续执行计划
-
-patches:待应用的修改
-
-final_response:最终输出给用户的结果
-
-current_step:当前执行的流程节点
-
-next_step:流程路由字段
-
-error:错误信息
-'''
-
-
 from typing import TypedDict, Optional, List, Dict, Any
 
 
@@ -48,10 +17,41 @@ class Patch(TypedDict, total=False):
     reason: str
 
 
+class RuntimePageMeta(TypedDict, total=False):
+    url: str
+    title: str
+    ready_state: str
+    html_length: int
+
+
+class ConsoleLog(TypedDict, total=False):
+    level: str
+    message: str
+    source: str
+    timestamp: str
+
+
+class NetworkLog(TypedDict, total=False):
+    url: str
+    method: str
+    status: int
+    resource_type: str
+    error: str
+    timestamp: str
+
+
+class CDPTargetInfo(TypedDict, total=False):
+    id: str
+    title: str
+    url: str
+    type: str
+    webSocketDebuggerUrl: str
+
+
 class AgentState(TypedDict, total=False):
     # 用户请求
     user_request: str
-    task_type: str  # explain / debug / modify / refactor / search
+    task_type: str   # debug / modify / refactor / search
     search_phase: str
 
     # 项目工作区
@@ -62,6 +62,24 @@ class AgentState(TypedDict, total=False):
     candidate_files: List[str]
     selected_files: List[str]
     code_context: List[CodeChunk]
+
+    # 浏览器/CDP 连接信息
+    remote_debugging_url: str          # 例如: http://127.0.0.1:9222
+    target_url: str                    # 例如: file:///C:/Users/.../index.html
+    cdp_session: Any
+    cdp_target_info: CDPTargetInfo
+    browser_attached: bool
+    needs_runtime_inspection: bool
+
+    # 运行时页面信息
+    runtime_page_meta: RuntimePageMeta
+    runtime_dom: str
+    runtime_dom_summary: str
+    console_logs: List[ConsoleLog]
+    console_summary: str
+    network_logs: List[NetworkLog]
+    network_summary: str
+    runtime_analysis: str
 
     # 分析与规划
     analysis: str

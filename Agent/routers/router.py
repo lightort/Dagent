@@ -1,5 +1,5 @@
 from state.agent_state import AgentState
-import json
+
 
 def _print_separator(title: str):
     """打印一个带有标题的分隔线，使日志区块分明"""
@@ -7,33 +7,47 @@ def _print_separator(title: str):
     print(f"🚀 {title}")
     print("=" * 60)
 
+
 def _print_state_summary(state: AgentState, context: str):
     """
     精简打印 State 的关键信息，避免刷屏。
     """
     print(f"📍 [{context}] 当前状态摘要:")
-    
+
     # 1. 错误优先显示
     if state.get("error"):
         err_msg = str(state["error"])
-        # 截断过长的错误信息
         if len(err_msg) > 100:
             err_msg = err_msg[:100] + "..."
         print(f"   ❌ [ERROR]: {err_msg}")
-    
+
     # 2. 显示决策关键字段
     next_step = state.get("next_step", "")
     print(f"   🎯 [NEXT_STEP]: '{next_step}'")
-    
-    # 3. 可选：显示 workspace_summary 的文件数量（如果存在）
+
+    # 3. 显示任务类型
+    task_type = state.get("task_type", "")
+    if task_type:
+        print(f"   🧩 [TASK_TYPE]: '{task_type}'")
+
+    # 4. 可选显示 workspace 信息
     summary = state.get("workspace_summary", {})
     if isinstance(summary, dict):
         files_count = len(summary.get("files", []))
         scripts_count = len(summary.get("scripts", []))
         if files_count > 0 or scripts_count > 0:
             print(f"   📂 [WORKSPACE]: {files_count} files, {scripts_count} scripts")
-            
+
+    # 5. 可选显示运行时标志
+    if state.get("needs_runtime_inspection") is not None:
+        print(f"   🌐 [RUNTIME_NEEDED]: {state.get('needs_runtime_inspection')}")
+
+    # 6. 可选显示浏览器绑定状态
+    if state.get("browser_attached") is not None:
+        print(f"   🔌 [BROWSER_ATTACHED]: {state.get('browser_attached')}")
+
     print("-" * 40)
+
 
 def route_after_analyze(state: AgentState) -> str:
     _print_separator("路由决策: 分析后 (After Analyze)")
@@ -46,8 +60,14 @@ def route_after_analyze(state: AgentState) -> str:
 
     next_step = state.get("next_step", "").strip()
     valid_routes = {
-        "search_file", "read_file", "search_in_file",
-        "find_bug", "modify_code", "refactor_code", "finish"
+        "attach_browser_target",
+        "inspect_runtime",
+        "search_file",
+        "read_file",
+        "search_in_file",
+        "modify_code",
+        "refactor_code",
+        "finish",
     }
 
     # 2. 验证路由
@@ -72,7 +92,13 @@ def route_after_check(state: AgentState) -> str:
         return "error"
 
     next_step = state.get("next_step", "").strip()
-    valid_routes = {"continue", "apply_patch", "done"}
+    valid_routes = {
+        "continue",
+        "attach_browser_target",
+        "inspect_runtime",
+        "apply_patch",
+        "done",
+    }
 
     # 2. 验证路由
     if next_step in valid_routes:

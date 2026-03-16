@@ -16,6 +16,8 @@ npm install
 # 启动 Chrome 浏览器并开启远程调试
 chrome --remote-debugging-port=9222
 
+
+
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
 
 Start-Process -FilePath C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe -ArgumentList '--remote-debugging-port=9222', 'D:\Projects\debug_tool\web_app\test1\demo-page.html' 
@@ -29,11 +31,7 @@ Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" 
 Stop-Process -Name chrome -Force -ErrorAction SilentlyContinue
 
 Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" `
-  -ArgumentList @(
-    "--remote-debugging-port=9222",
-    "--user-data-dir=C:\temp\chrome-cdp-profile",
-    "C:\Users\14590\Desktop\Dagent\WebPage\index.html"
-  )
+  -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "--user-data-dir=C:\tmp\chrome-cdp-profile", "file:///C:/Users/14590/Desktop/Dagent/WebPage/index.html"
   
 ## 全局参数
 
