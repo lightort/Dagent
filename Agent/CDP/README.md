@@ -25,6 +25,16 @@ Start-Process -FilePath C:\\Program Files\\Google\\Chrome\\Application\\chrome.e
 Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "C:\Users\14590\Desktop\Dagent\WebPage\index.html"
 ```
 
+
+Stop-Process -Name chrome -Force -ErrorAction SilentlyContinue
+
+Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  -ArgumentList @(
+    "--remote-debugging-port=9222",
+    "--user-data-dir=C:\temp\chrome-cdp-profile",
+    "C:\Users\14590\Desktop\Dagent\WebPage\index.html"
+  )
+  
 ## 全局参数
 
 ```bash

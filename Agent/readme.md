@@ -27,7 +27,7 @@ project/
 │   ├── scan_workspace.py
 │   ├── analyze_request.py
 │   ├── search_code.py
-│   ├── explain_code.py
+│   ├── search_in_code.py
 │   ├── find_bug.py
 │   ├── modify_code.py
 │   ├── refactor_code.py

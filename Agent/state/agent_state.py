@@ -52,6 +52,7 @@ class AgentState(TypedDict, total=False):
     # 用户请求
     user_request: str
     task_type: str  # explain / debug / modify / refactor / search
+    search_phase: str
 
     # 项目工作区
     workspace_root: str
