@@ -7,7 +7,6 @@ from nodes.analyze_request import analyze_request_node
 from nodes.search_file import search_file_node
 from nodes.read_file import read_file_node
 from nodes.search_in_file import search_in_file_node
-from nodes.find_bug import find_bug_node
 from nodes.modify_code import modify_code_node
 from nodes.refactor_code import refactor_code_node
 from nodes.apply_patch import apply_patch_node
@@ -27,7 +26,6 @@ analyze_request
    ├── search_file   → check_task_status
    ├── read_file     → check_task_status
    ├── explain_code  → check_task_status
-   ├── find_bug      → check_task_status
    ├── modify_code   → check_task_status
    ├── refactor_code → check_task_status
    ├── finish        → END
@@ -54,7 +52,6 @@ def build_graph():
     builder.add_node("search_file", search_file_node)
     builder.add_node("read_file", read_file_node)
     builder.add_node("search_in_file", search_in_file_node)
-    builder.add_node("find_bug", find_bug_node)
     builder.add_node("modify_code", modify_code_node)
     builder.add_node("refactor_code", refactor_code_node)
     builder.add_node("apply_patch", apply_patch_node)
@@ -74,7 +71,6 @@ def build_graph():
             "search_file": "search_file",
             "search_in_file": "search_in_file",
             "read_file": "read_file",
-            "find_bug": "find_bug",
             "modify_code": "modify_code",
             "refactor_code": "refactor_code",
             "finish": END,
@@ -86,7 +82,6 @@ def build_graph():
     builder.add_edge("search_file", "check_task_status")
     builder.add_edge("search_in_file", "check_task_status")
     builder.add_edge("read_file", "check_task_status")
-    builder.add_edge("find_bug", "check_task_status")
     builder.add_edge("modify_code", "check_task_status")
     builder.add_edge("refactor_code", "check_task_status")
 

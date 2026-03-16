@@ -19,7 +19,7 @@ SYSTEM_PROMPT = """
 2. 如果已经生成了可应用的 patches，则输出 apply_patch
 3. 如果任务目标已经完成，或者已经可以给用户最终答复，则输出 done
 4. 只有当确实已经足够回答用户问题时，才输出 done
-5. 对 explain/debug 类型任务，如果已经形成清晰分析结论，通常可以 done
+5. 对 debug 类型任务，如果已经形成清晰分析结论，通常可以 done
 6. 对 modify/refactor 类型任务，如果已有 patches 且尚未应用，通常应输出 apply_patch
 7. analysis 应简洁说明你的判断依据
 8. final_response 只有在 next_step=done 时才应尽量填写；否则可以为空字符串
@@ -125,7 +125,7 @@ final_response:
 
 注意：
 - 对 modify/refactor，如果 patches 非空且明显是待落地修改，优先考虑 apply_patch
-- 对 explain/debug，如果已经有足够清晰的 analysis 或 final_response，通常可 done
+- 对 debug，如果已经有足够清晰的 analysis 或 final_response，通常可 done
 - 对 search/read 之后，如果只是拿到了文件但还没真正形成结论，通常应 continue
 - 只能输出 JSON
 """
@@ -157,7 +157,7 @@ final_response:
 
         if next_step == "done" and not new_final_response:
             # done 时尽量保证有最终输出
-            if task_type in {"explain", "debug"} and analysis:
+            if task_type == "debug" and analysis:
                 new_final_response = analysis
             elif task_type in {"modify", "refactor"} and patches:
                 new_final_response = "已完成修改方案生成，可进入补丁应用。"
