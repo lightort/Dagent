@@ -65,8 +65,6 @@ def route_after_analyze(state: AgentState) -> str:
         "search_file",
         "read_file",
         "search_in_file",
-        "modify_code",
-        "refactor_code",
         "finish",
     }
 
@@ -96,7 +94,6 @@ def route_after_check(state: AgentState) -> str:
         "continue",
         "attach_browser_target",
         "inspect_runtime",
-        "apply_patch",
         "done",
     }
 

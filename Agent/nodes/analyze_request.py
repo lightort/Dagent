@@ -10,10 +10,8 @@ SYSTEM_PROMPT = """
 你必须只输出 JSON，不能输出任何额外解释、markdown、代码块。
 
 你可选择的 task_type 只有：
-- debug
-- modify
-- refactor
 - search
+- attach browser
 
 你可选择的 next_step 只有：
 - attach_browser_target  绑定浏览器目标页面
@@ -21,8 +19,6 @@ SYSTEM_PROMPT = """
 - search_file            寻找相关文件
 - search_in_file         在相关文件中定位相关代码片段
 - read_file              基于已经定位到的代码片段扩展上下文并精读
-- modify_code            修改代码
-- refactor_code          重构代码
 - finish                 任务完成
 
 节点职责定义：
@@ -31,8 +27,7 @@ SYSTEM_PROMPT = """
 3. search_file 只负责找“文件”
 4. search_in_file 只负责在 selected_files 中找“相关代码片段”，并产出 code_context
 5. read_file 只负责基于已有 code_context 扩展上下文并精读
-6. modify_code / refactor_code 只在已经有足够上下文时使用
-7. search_file 既可以用于初始找文件，也可以用于 action 阶段切换到新的文件继续探索
+6. search_file 既可以用于初始找文件，也可以用于 action 阶段切换到新的文件继续探索
 
 search_phase 含义：
 - file   = 还在文件级定位阶段
@@ -49,7 +44,7 @@ search_phase 含义：
 5. 如果 search_phase 是 file，通常应选择 search_file
 6. 如果 search_phase 是 chunk，通常应选择 search_in_file
 7. 如果 search_phase 是 read，通常应选择 read_file
-8. 如果 search_phase 是 action，才应考虑 attach_browser_target / inspect_runtime / modify_code / refactor_code / finish / search_file
+8. 如果 search_phase 是 action，才应考虑 attach_browser_target / inspect_runtime / finish / search_file
 9. 如果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点
 10. 只有在任务已经足够完成时，才能选择 finish
 11. analysis 要简洁说明判断依据
@@ -98,7 +93,6 @@ def analyze_request_node(state: AgentState) -> AgentState:
         code_context = state.get("code_context", [])
         analysis = state.get("analysis", "")
         plan = state.get("plan", [])
-        patches = state.get("patches", [])
         task_type = state.get("task_type", "")
         search_phase = state.get("search_phase", "").strip()
         remote_debugging_url = state.get("remote_debugging_url", "")
@@ -114,7 +108,6 @@ def analyze_request_node(state: AgentState) -> AgentState:
         has_candidate_files = bool(candidate_files)
         has_selected_files = bool(selected_files)
         has_code_context = bool(code_context)
-        has_patches = bool(patches)
 
         user_prompt = f"""
 当前 AgentState 关键信息如下：
@@ -173,14 +166,11 @@ analysis:
 plan:
 {json.dumps(plan, ensure_ascii=False)}
 
-patches:
-{json.dumps(patches, ensure_ascii=False)}
 
 状态判断辅助字段：
 has_candidate_files: {has_candidate_files}
 has_selected_files: {has_selected_files}
 has_code_context: {has_code_context}
-has_patches: {has_patches}
 has_runtime_analysis: {bool(runtime_analysis)}
 
 请基于以上状态，判断：
@@ -195,12 +185,12 @@ has_runtime_analysis: {bool(runtime_analysis)}
 - 如果 search_phase=file，不要跳过 search_file
 - 如果 search_phase=chunk，不要跳过 search_in_file
 - 如果 search_phase=read，不要跳过 read_file
-- 如果 search_phase=action，才考虑 attach_browser_target / inspect_runtime / modify_code / refactor_code / finish / search_file
+- 如果 search_phase=action，才考虑 attach_browser_target / inspect_runtime  / finish / search_file
 - 如果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点
 - 只有在任务已经足够完成时，才能选择 finish
 - 只能输出 JSON
-- next_step 只能是 attach_browser_target / inspect_runtime / search_file / read_file / search_in_file / modify_code / refactor_code / finish
-- task_type 只能是 debug / modify / refactor / search
+- next_step 只能是 attach_browser_target / inspect_runtime / search_file / read_file / search_in_file / finish
+- task_type 只能是  search / attach browser
 """
         response = llm.invoke([
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -216,15 +206,13 @@ has_runtime_analysis: {bool(runtime_analysis)}
         new_analysis = result.get("analysis", "").strip()
         next_step = result.get("next_step", "").strip()
 
-        valid_task_types = {"debug", "modify", "refactor", "search"}
+        valid_task_types = {"search", "attach browser"}
         valid_next_steps = {
             "attach_browser_target",
             "inspect_runtime",
             "search_file",
             "read_file",
             "search_in_file",
-            "modify_code",
-            "refactor_code",
             "finish",
         }
 

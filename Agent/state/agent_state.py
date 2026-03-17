@@ -9,13 +9,6 @@ class CodeChunk(TypedDict, total=False):
     summary: str
 
 
-class Patch(TypedDict, total=False):
-    file_path: str
-    original_content: str
-    new_content: str
-    diff: str
-    reason: str
-
 
 class RuntimePageMeta(TypedDict, total=False):
     url: str
@@ -51,7 +44,7 @@ class CDPTargetInfo(TypedDict, total=False):
 class AgentState(TypedDict, total=False):
     # 用户请求
     user_request: str
-    task_type: str   # debug / modify / refactor / search
+    task_type: str   # search / attach browser
     search_phase: str
 
     # 项目工作区
@@ -85,8 +78,6 @@ class AgentState(TypedDict, total=False):
     analysis: str
     plan: List[str]
 
-    # 修改结果
-    patches: List[Patch]
 
     # 执行控制
     last_step : str 
