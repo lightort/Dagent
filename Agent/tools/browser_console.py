@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 
@@ -208,7 +211,23 @@ def _collect_from_client_events(cdp: Any) -> List[Dict[str, Any]]:
     return logs
 
 
-def collect_console_logs(cdp: Any, prefer_client_events: bool = False) -> List[Dict[str, Any]]:
+def _save_console_logs(
+    logs: List[Dict[str, Any]],
+    output_dir: str = r"C:\Users\14590\Desktop\Dagent\Agent\download\consoles",
+) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = os.path.join(output_dir, f"{timestamp}_console_logs.json")
+    with open(file_path, "w", encoding="utf-8", errors="replace") as f:
+        json.dump(logs, f, ensure_ascii=False, indent=2)
+    return os.path.abspath(file_path)
+
+
+def collect_console_logs(
+    cdp: Any,
+    prefer_client_events: bool = False,
+    save_to_file: bool = True,
+) -> List[Dict[str, Any]]:
     """
     获取 console 日志。
 
@@ -224,6 +243,12 @@ def collect_console_logs(cdp: Any, prefer_client_events: bool = False) -> List[D
         ##print("[MAIN] trying client events first")
         logs = _collect_from_client_events(cdp)
         if logs:
+            if save_to_file:
+                try:
+                    saved_path = _save_console_logs(logs)
+                    print(f"[CONSOLE] logs saved to: {saved_path}")
+                except Exception as e:
+                    print(f"[CONSOLE] save failed: {e}")
             ##print(f"[MAIN] returning {len(logs)} logs from client events")
             return logs
         ###print("[MAIN] no logs from client events, fallback to page buffer")
@@ -231,5 +256,11 @@ def collect_console_logs(cdp: Any, prefer_client_events: bool = False) -> List[D
     ##print("[MAIN] installing console buffer and reading from page")
     install_console_buffer(cdp)
     logs = _collect_from_buffer(cdp)
+    if save_to_file:
+        try:
+            saved_path = _save_console_logs(logs)
+            print(f"[CONSOLE] logs saved to: {saved_path}")
+        except Exception as e:
+            print(f"[CONSOLE] save failed: {e}")
     ##print(f"[MAIN] returning {len(logs)} logs from page buffer")
     return logs

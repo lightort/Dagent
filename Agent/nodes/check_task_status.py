@@ -1,30 +1,35 @@
-import json
+﻿import json
 from state.agent_state import AgentState
 from config.model_config import llm
 
 
 SYSTEM_PROMPT = """
-你是一个网页代码分析 Agent 的任务状态评估器。
-你的职责是根据当前 AgentState 判断当前任务是否已经完成，或者下一步应该继续分析、应用补丁、还是结束。
+你是网页代码分析 Agent 的状态检查节点。
+请根据当前状态决定下一步路由。
 
-你必须只输出 JSON，不能输出任何额外解释、markdown、代码块。
+只允许输出 JSON。
 
-你可选择的 next_step 只有：
+next_step 只能是：
 - continue
+- attach_browser_target
+- runtime_load_page
+- runtime_capture_dom
+- runtime_collect_console
+- runtime_collect_network
 - done
 
-决策原则：
-1. 如果当前信息不足以完成任务，则输出 continue
-2. 如果任务目标已经完成，或者已经可以给用户最终答复，则输出 done
-3. 只有当确实已经足够回答用户问题时，才输出 done
-4. 对 debug 类型任务，如果已经形成清晰分析结论，通常可以 done
-5. analysis 应简洁说明你的判断依据
-6. final_response 只有在 next_step=done 时才应尽量填写；否则可以为空字符串
+决策建议：
+1. 信息不足时优先 continue（回到 analyze_request 决策）。
+2. 明确需要浏览器绑定时可返回 attach_browser_target。
+3. 已绑定浏览器且明确需要运行时子能力时可返回对应 runtime_* 节点。
+4. 仅在已可回答用户请求时返回 done。
+5. analysis 简洁说明理由。
+6. next_step=done 时应尽量给出 final_response。
 
-输出格式必须严格为：
+输出格式：
 {
   "analysis": "...",
-  "next_step": "continue |  done",
+  "next_step": "...",
   "final_response": "..."
 }
 """
@@ -48,7 +53,7 @@ def _safe_json_load(text: str) -> dict:
 
 def check_task_status_node(state: AgentState) -> AgentState:
     """
-    检查当前任务状态，决定是继续分析、应用补丁还是结束
+    检查当前任务状态，决定继续决策、跳转运行时节点或结束。
     """
     print("Checking task status by LLM...")
 
@@ -109,17 +114,15 @@ plan:
 final_response:
 {final_response}
 
-刚刚执行完的节点:
+刚执行完的节点:
 {previous_step}
 
-请判断当前任务状态：
-1. 如果还缺少信息，无法完成任务，则 next_step = continue
-2. 如果任务已经足够完成，则 next_step = done
+请输出：
+1. analysis
+2. next_step
+3. final_response
 
-注意：
-- 对 debug，如果已经有足够清晰的 analysis 或 final_response，通常可 done
-- 对 search/read 之后，如果只是拿到了文件但还没真正形成结论，通常应 continue
-- 只能输出 JSON
+仅输出 JSON。
 """
 
         response = llm.invoke([
@@ -136,13 +139,20 @@ final_response:
         next_step = (result.get("next_step", "") or "").strip()
         new_final_response = (result.get("final_response", "") or "").strip()
 
-        valid_next_steps = {"continue", "done"}
+        valid_next_steps = {
+            "continue",
+            "attach_browser_target",
+            "runtime_load_page",
+            "runtime_capture_dom",
+            "runtime_collect_console",
+            "runtime_collect_network",
+            "done",
+        }
         if next_step not in valid_next_steps:
             raise ValueError(f"Invalid next_step from LLM: {next_step}")
 
         if next_step == "done" and not new_final_response:
-            # done 时尽量保证有最终输出
-            if task_type == "debug" and analysis:
+            if analysis:
                 new_final_response = analysis
             else:
                 new_final_response = "任务已完成。"

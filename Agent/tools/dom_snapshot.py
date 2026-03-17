@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
+import re
+from datetime import datetime
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 
 def _cdp_call(cdp: Any, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -26,6 +30,31 @@ def _eval_return_value(cdp: Any, expression: str) -> str:
     return "" if value is None else str(value)
 
 
+def _safe_filename_from_url(url: str) -> str:
+    parsed = urlparse(url or "")
+    candidate = parsed.path.strip("/") if parsed.path else ""
+    candidate = candidate.split("/")[-1] if candidate else "page"
+    if not candidate:
+        candidate = "page"
+    candidate = re.sub(r"[^a-zA-Z0-9._-]", "_", candidate)
+    return candidate or "page"
+
+
+def _save_dom_snapshot(
+    dom_content: str,
+    current_url: str,
+    mode: str,
+    output_dir: str = r"C:\Users\14590\Desktop\Dagent\Agent\download\doms",
+) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_name = _safe_filename_from_url(current_url)
+    file_path = os.path.join(output_dir, f"{timestamp}_{base_name}_{mode}.txt")
+    with open(file_path, "w", encoding="utf-8", errors="replace") as f:
+        f.write(dom_content or "")
+    return os.path.abspath(file_path)
+
+
 def capture_dom_snapshot(
     cdp: Any,
     selector: Optional[str] = None,
@@ -45,8 +74,16 @@ def capture_dom_snapshot(
     _cdp_call(cdp, "DOM.enable")
     _cdp_call(cdp, "Runtime.enable")
 
+    current_url = _eval_return_value(cdp, "window.location.href || ''")
+
     if selector is None or not str(selector).strip():
-        return _eval_return_value(cdp, "document.documentElement?.outerHTML || ''")
+        dom = _eval_return_value(cdp, "document.documentElement?.outerHTML || ''")
+        try:
+            saved_path = _save_dom_snapshot(dom, current_url=current_url, mode=mode)
+            print(f"[DOM_SNAPSHOT] saved to: {saved_path}")
+        except Exception as e:
+            print(f"[DOM_SNAPSHOT] save failed: {e}")
+        return dom
 
     selector_escaped = selector.replace("\\", "\\\\").replace("'", "\\'")
     if mode == "innerText":
@@ -71,7 +108,13 @@ def capture_dom_snapshot(
         }})()
         """
 
-    return _eval_return_value(cdp, expression)
+    dom = _eval_return_value(cdp, expression)
+    try:
+        saved_path = _save_dom_snapshot(dom, current_url=current_url, mode=mode)
+        print(f"[DOM_SNAPSHOT] saved to: {saved_path}")
+    except Exception as e:
+        print(f"[DOM_SNAPSHOT] save failed: {e}")
+    return dom
 
 
 def capture_dom_metadata(cdp: Any) -> Dict[str, Any]:

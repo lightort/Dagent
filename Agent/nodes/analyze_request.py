@@ -1,55 +1,46 @@
-import json
+﻿import json
 from state.agent_state import AgentState
 from config.model_config import llm
 
 
 SYSTEM_PROMPT = """
-你是一个网页代码分析 Agent 的决策中枢。
-你的任务不是直接修改代码，而是根据当前状态决定“下一步应该进入哪个节点”。
+你是网页代码分析 Agent 的决策节点。
+你的职责是根据当前 AgentState 选择下一步要执行的节点。
 
-你必须只输出 JSON，不能输出任何额外解释、markdown、代码块。
+只允许输出 JSON，不要输出任何额外文本。
 
-你可选择的 task_type 只有：
+task_type 只能是：
 - search
 - attach browser
 
-你可选择的 next_step 只有：
-- attach_browser_target  绑定浏览器目标页面
-- inspect_runtime        获取运行时页面信息（DOM / console / network）
-- search_file            寻找相关文件
-- search_in_file         在相关文件中定位相关代码片段
-- read_file              基于已经定位到的代码片段扩展上下文并精读
-- finish                 任务完成
+next_step 只能是：
+- attach_browser_target
+- runtime_load_page
+- runtime_capture_dom
+- runtime_collect_console
+- runtime_collect_network
+- search_file
+- search_in_file
+- read_file
+- finish
 
-节点职责定义：
-1. attach_browser_target 负责绑定正确的浏览器 target，并建立 cdp_session ，之后可以续接 inspect_runtime 采集运行时信息
-2. inspect_runtime 只负责基于已有 cdp_session 采集运行时信息
-3. search_file 只负责找“文件”
-4. search_in_file 只负责在 selected_files 中找“相关代码片段”，并产出 code_context
-5. read_file 只负责基于已有 code_context 扩展上下文并精读
-6. search_file 既可以用于初始找文件，也可以用于 action 阶段切换到新的文件继续探索
+当前图逻辑（关键）：
+1. 入口先完成浏览器启动和 workspace 扫描。
+2. analyze_request 决定动作节点。
+3. attach_browser_target 执行后会回到 analyze_request。
+4. runtime_* / search_file / search_in_file / read_file 执行后会进入 check_task_status。
+5. 仅当任务已经可结束时才选择 finish。
 
-search_phase 含义：
-- file   = 还在文件级定位阶段
-- chunk  = 已经找到文件，正在文件内定位片段
-- read   = 已经定位到片段，准备精读
-- action = 已经有足够上下文，可以执行具体任务或继续探索
-- done   = 任务已完成
+决策约束：
+1. 如果需要运行时信息且 browser_attached=False，优先 attach_browser_target。
+2. 如果需要运行时信息且 browser_attached=True，可在 runtime_* 四个节点中按需选择任意一个。
+3. search_phase=file 时优先 search_file。
+4. search_phase=chunk 时优先 search_in_file。
+5. search_phase=read 时优先 read_file。
+6. search_phase=action 时再考虑 runtime_* / attach_browser_target / finish / search_file。
+7. analysis 要简洁说明选择依据。
 
-决策原则：
-1. task_type 表示任务语义；next_step 表示下一步节点，两者不要混淆
-2. 如果任务需要运行时信息，优先判断是否已完成浏览器绑定
-3. 如果需要运行时信息且 browser_attached 为 false，应选择 attach_browser_target
-4. 如果需要运行时信息且 browser_attached 为 true，但尚缺 runtime 信息，应选择 inspect_runtime
-5. 如果 search_phase 是 file，通常应选择 search_file
-6. 如果 search_phase 是 chunk，通常应选择 search_in_file
-7. 如果 search_phase 是 read，通常应选择 read_file
-8. 如果 search_phase 是 action，才应考虑 attach_browser_target / inspect_runtime / finish / search_file
-9. 如果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点
-10. 只有在任务已经足够完成时，才能选择 finish
-11. analysis 要简洁说明判断依据
-
-输出格式必须严格为：
+输出格式：
 {
   "task_type": "...",
   "analysis": "...",
@@ -115,7 +106,7 @@ def analyze_request_node(state: AgentState) -> AgentState:
 user_request:
 {user_request}
 
-已有 task_type:
+task_type:
 {task_type}
 
 search_phase:
@@ -124,14 +115,14 @@ search_phase:
 needs_runtime_inspection:
 {needs_runtime_inspection}
 
+browser_attached:
+{browser_attached}
+
 remote_debugging_url:
 {remote_debugging_url}
 
 target_url:
 {target_url}
-
-browser_attached:
-{browser_attached}
 
 workspace_summary:
 {json.dumps(workspace_summary, ensure_ascii=False)}
@@ -166,31 +157,18 @@ analysis:
 plan:
 {json.dumps(plan, ensure_ascii=False)}
 
-
-状态判断辅助字段：
+状态辅助：
 has_candidate_files: {has_candidate_files}
 has_selected_files: {has_selected_files}
 has_code_context: {has_code_context}
 has_runtime_analysis: {bool(runtime_analysis)}
 
-请基于以上状态，判断：
-1. 当前任务类型 task_type
-2. 当前分析结论 analysis
-3. 下一步 next_step
+请输出：
+1. task_type
+2. analysis
+3. next_step
 
-注意：
-- 优先遵守 search_phase 所代表的阶段语义
-- 如果需要运行时信息且 browser_attached=False，应优先选择 attach_browser_target
-- 如果需要运行时信息且 browser_attached=True，但还缺少运行时结果，应优先选择 inspect_runtime
-- 如果 search_phase=file，不要跳过 search_file
-- 如果 search_phase=chunk，不要跳过 search_in_file
-- 如果 search_phase=read，不要跳过 read_file
-- 如果 search_phase=action，才考虑 attach_browser_target / inspect_runtime  / finish / search_file
-- 如果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点
-- 只有在任务已经足够完成时，才能选择 finish
-- 只能输出 JSON
-- next_step 只能是 attach_browser_target / inspect_runtime / search_file / read_file / search_in_file / finish
-- task_type 只能是  search / attach browser
+仅输出 JSON。
 """
         response = llm.invoke([
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -209,7 +187,10 @@ has_runtime_analysis: {bool(runtime_analysis)}
         valid_task_types = {"search", "attach browser"}
         valid_next_steps = {
             "attach_browser_target",
-            "inspect_runtime",
+            "runtime_load_page",
+            "runtime_capture_dom",
+            "runtime_collect_console",
+            "runtime_collect_network",
             "search_file",
             "read_file",
             "search_in_file",
@@ -223,7 +204,7 @@ has_runtime_analysis: {bool(runtime_analysis)}
             raise ValueError(f"Invalid next_step from LLM: {next_step}")
 
         # # -------------------------
-        # # 基于 search_phase 的硬约束纠偏
+        # # 鍩轰簬 search_phase 鐨勭‖绾︽潫绾犲亸
         # # -------------------------
 
         # if search_phase == "file":
@@ -252,18 +233,18 @@ has_runtime_analysis: {bool(runtime_analysis)}
         #         next_step = "read_file"
 
         # elif search_phase == "action":
-        #     # action 阶段先看 runtime 需求
+        #     # action 闃舵鍏堢湅 runtime 闇€姹?
         #     if needs_runtime_inspection:
         #         if not browser_attached:
         #             if next_step != "attach_browser_target":
         #                 print(f"Correcting next_step from {next_step} to attach_browser_target because runtime is needed and browser is not attached.")
         #                 next_step = "attach_browser_target"
         #         elif not runtime_analysis:
-        #             if next_step != "inspect_runtime":
-        #                 print(f"Correcting next_step from {next_step} to inspect_runtime because runtime is needed and runtime analysis is missing.")
-        #                 next_step = "inspect_runtime"
+        #             if next_step != "runtime_load_page":
+        #                 print(f"Correcting next_step from {next_step} to runtime_load_page because runtime is needed and runtime analysis is missing.")
+        #                 next_step = "runtime_load_page"
         #         else:
-        #             # 已有 runtime 信息，再考虑动作
+        #             # 宸叉湁 runtime 淇℃伅锛屽啀鑰冭檻鍔ㄤ綔
         #             if new_task_type == "modify":
         #                 if next_step not in {"modify_code", "search_file", "finish"}:
         #                     print(f"Correcting next_step from {next_step} to modify_code in action phase.")
@@ -273,7 +254,7 @@ has_runtime_analysis: {bool(runtime_analysis)}
         #                     print(f"Correcting next_step from {next_step} to refactor_code in action phase.")
         #                     next_step = "refactor_code"
         #             elif new_task_type == "debug":
-        #                 if next_step not in {"search_file", "inspect_runtime", "finish"}:
+        #                 if next_step not in {"search_file", "runtime_load_page", "finish"}:
         #                     print(f"Correcting next_step from {next_step} to search_file for debug task in action phase.")
         #                     next_step = "search_file"
         #             else:
@@ -281,7 +262,7 @@ has_runtime_analysis: {bool(runtime_analysis)}
         #                     print(f"Correcting next_step from {next_step} to search_file for search task in action phase.")
         #                     next_step = "search_file"
         #     else:
-        #         # 不需要 runtime，按静态分析流走
+        #         # 涓嶉渶瑕?runtime锛屾寜闈欐€佸垎鏋愭祦璧?
         #         if not code_context:
         #             if selected_files:
         #                 print("Correcting next_step to search_in_file because search_phase=action but code_context is empty.")
@@ -313,7 +294,7 @@ has_runtime_analysis: {bool(runtime_analysis)}
         #     if needs_runtime_inspection and not browser_attached:
         #         next_step = "attach_browser_target"
         #     elif needs_runtime_inspection and browser_attached and not runtime_analysis:
-        #         next_step = "inspect_runtime"
+        #         next_step = "runtime_load_page"
         #     elif not selected_files:
         #         next_step = "search_file"
         #     elif not code_context:
@@ -343,3 +324,5 @@ has_runtime_analysis: {bool(runtime_analysis)}
         updated_state["next_step"] = "error"
         print(updated_state["error"])
         return updated_state
+
+

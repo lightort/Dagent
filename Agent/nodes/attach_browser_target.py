@@ -61,8 +61,8 @@ def attach_browser_target_node(state: AgentState) -> AgentState:
         new_state["browser_attached"] = True
         new_state["error"] = None
 
-        # 绑定成功后直接进入运行时检查
-        new_state["next_step"] = "error" if not new_state["browser_attached"] else "inspect_runtime"
+        # 绑定成功后回到决策节点，由决策选择后续 runtime 子节点
+        new_state["next_step"] = "error" if not new_state["browser_attached"] else "continue"
         return new_state
 
     except Exception as e:

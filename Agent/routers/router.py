@@ -61,7 +61,10 @@ def route_after_analyze(state: AgentState) -> str:
     next_step = state.get("next_step", "").strip()
     valid_routes = {
         "attach_browser_target",
-        "inspect_runtime",
+        "runtime_load_page",
+        "runtime_capture_dom",
+        "runtime_collect_console",
+        "runtime_collect_network",
         "search_file",
         "read_file",
         "search_in_file",
@@ -93,7 +96,10 @@ def route_after_check(state: AgentState) -> str:
     valid_routes = {
         "continue",
         "attach_browser_target",
-        "inspect_runtime",
+        "runtime_load_page",
+        "runtime_capture_dom",
+        "runtime_collect_console",
+        "runtime_collect_network",
         "done",
     }
 

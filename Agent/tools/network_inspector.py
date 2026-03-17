@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 
@@ -205,7 +208,23 @@ def _collect_from_client_events(cdp: Any) -> List[Dict[str, Any]]:
     return logs
 
 
-def collect_network_logs(cdp: Any, prefer_client_events: bool = False) -> List[Dict[str, Any]]:
+def _save_network_logs(
+    logs: List[Dict[str, Any]],
+    output_dir: str = r"C:\Users\14590\Desktop\Dagent\Agent\download\networks",
+) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = os.path.join(output_dir, f"{timestamp}_network_logs.json")
+    with open(file_path, "w", encoding="utf-8", errors="replace") as f:
+        json.dump(logs, f, ensure_ascii=False, indent=2)
+    return os.path.abspath(file_path)
+
+
+def collect_network_logs(
+    cdp: Any,
+    prefer_client_events: bool = False,
+    save_to_file: bool = True,
+) -> List[Dict[str, Any]]:
     """
     获取网络请求日志。
     默认优先用页面缓冲区。
@@ -215,7 +234,20 @@ def collect_network_logs(cdp: Any, prefer_client_events: bool = False) -> List[D
     if prefer_client_events:
         logs = _collect_from_client_events(cdp)
         if logs:
+            if save_to_file:
+                try:
+                    saved_path = _save_network_logs(logs)
+                    print(f"[NETWORK] logs saved to: {saved_path}")
+                except Exception as e:
+                    print(f"[NETWORK] save failed: {e}")
             return logs
 
     install_network_buffer(cdp)
-    return _collect_from_buffer(cdp)
+    logs = _collect_from_buffer(cdp)
+    if save_to_file:
+        try:
+            saved_path = _save_network_logs(logs)
+            print(f"[NETWORK] logs saved to: {saved_path}")
+        except Exception as e:
+            print(f"[NETWORK] save failed: {e}")
+    return logs
