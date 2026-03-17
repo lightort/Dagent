@@ -26,6 +26,8 @@ def start_browser_node(state: AgentState) -> AgentState:
     ).strip()
     updated_state["remote_debugging_url"] = remote_debugging_url
     updated_state["target_url"] = target_url
+    updated_state["browser_attached"] = False
+    updated_state["operation_history"] = state.get("operation_history", []) + ["start_browser"]
 
     ps_script = fr"""
 Stop-Process -Name chrome -Force -ErrorAction SilentlyContinue

@@ -10,7 +10,7 @@ def runtime_load_page_node(state: AgentState) -> AgentState:
     new_state["current_step"] = "runtime_load_page"
     new_state["last_step"] = state.get("current_step", "")
     new_state["error"] = None
-
+    new_state["operation_history"] = state.get("operation_history", []) + ["runtime_load_page"]
     try:
         target_url = safe_str(new_state.get("target_url", "")).strip()
         if not target_url:

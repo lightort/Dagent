@@ -10,7 +10,7 @@ def runtime_collect_console_node(state: AgentState) -> AgentState:
     new_state["current_step"] = "runtime_collect_console"
     new_state["last_step"] = state.get("current_step", "")
     new_state["error"] = None
-
+    new_state["operation_history"] = state.get("operation_history", []) + ["runtime_collect_console"]
     try:
         cdp = new_state.get("cdp_session")
         if cdp is None:

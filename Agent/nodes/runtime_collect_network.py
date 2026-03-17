@@ -14,6 +14,7 @@ def runtime_collect_network_node(state: AgentState) -> AgentState:
     new_state["current_step"] = "runtime_collect_network"
     new_state["last_step"] = state.get("current_step", "")
     new_state["error"] = None
+    new_state["operation_history"] = state.get("operation_history", []) + ["runtime_collect_network"]
 
     try:
         cdp = new_state.get("cdp_session")

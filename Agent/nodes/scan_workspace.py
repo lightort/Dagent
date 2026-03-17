@@ -82,6 +82,7 @@ def scan_workspace_node(state: AgentState) -> AgentState:
     updated_state["workspace_root"] = workspace_root
     updated_state["browser_attached"] = False  
     updated_state["target_url"] = "file:///C:/Users/14590/Desktop/Dagent/WebPage/index.html"
+    updated_state["operation_history"] = state.get("operation_history", []) + ["scan_workspace"]
     workspace_summary = {
         "root": workspace_root,
         "directories": [],

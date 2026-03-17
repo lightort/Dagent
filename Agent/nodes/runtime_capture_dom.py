@@ -10,7 +10,7 @@ def runtime_capture_dom_node(state: AgentState) -> AgentState:
     new_state["current_step"] = "runtime_capture_dom"
     new_state["last_step"] = state.get("current_step", "")
     new_state["error"] = None
-
+    new_state["operation_history"] = state.get("operation_history", []) + ["runtime_capture_dom"]
     try:
         cdp = new_state.get("cdp_session")
         if cdp is None:

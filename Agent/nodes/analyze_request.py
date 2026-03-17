@@ -312,7 +312,8 @@ has_runtime_analysis: {bool(runtime_analysis)}
         updated_state["task_type"] = new_task_type
         updated_state["analysis"] = new_analysis
         updated_state["next_step"] = next_step
-
+        
+        updated_state["operation_history"] = state.get("operation_history", []) + ["analyze_request"]
         print(
             f"Request analyzed. "
             f"task_type={new_task_type}, search_phase={search_phase}, next_step={next_step}"

@@ -450,6 +450,7 @@ def search_in_file_node(state: AgentState) -> AgentState:
     updated_state["current_step"] = "search_in_file"
     updated_state["last_step"] = state.get("current_step", "")
     updated_state["error"] = None
+    updated_state["operation_history"] = state.get("operation_history", []) + ["search_in_file"] + [state.get("selected_files", []) or []]
 
     try:
         workspace_root = state.get("workspace_root", "") or os.getcwd()

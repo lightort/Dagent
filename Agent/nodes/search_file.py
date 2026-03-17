@@ -119,6 +119,7 @@ def search_file_node(state: AgentState) -> AgentState:
     updated_state["current_step"] = "search_file"
     updated_state["last_step"] = state.get("current_step", "")
     updated_state["error"] = None
+    updated_state["operation_history"] = state.get("operation_history", []) + ["search_file"] + [state.get("candidate_files", []) or []] + [state.get("selected_files", []) or []]
 
     try:
         user_request = state.get("user_request", "") or ""

@@ -160,6 +160,7 @@ final_response:
         updated_state["analysis"] = new_analysis or analysis
         updated_state["next_step"] = next_step
         updated_state["final_response"] = new_final_response or final_response
+        updated_state["operation_history"] = state.get("operation_history", []) + ["check_task_status"]
 
         print(f"Task status checked. next_step={next_step}")
         return updated_state

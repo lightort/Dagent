@@ -285,6 +285,7 @@ def read_file_node(state: AgentState) -> AgentState:
     updated_state["current_step"] = "read_file"
     updated_state["error"] = None
     updated_state["last_step"] = state.get("current_step", "")
+    
     try:
         workspace_root = state.get("workspace_root", "") or os.getcwd()
         selected_files = state.get("selected_files", []) or []
@@ -321,7 +322,7 @@ def read_file_node(state: AgentState) -> AgentState:
             f"共得到 {len(refined_code_context)} 个代码片段；"
             f"涉及文件: {[chunk['file_path'] for chunk in refined_code_context]}。"
         )
-
+        updated_state["operation_history"] = state.get("operation_history", []) + ["read_file"] + [chunk['file_path'] for chunk in refined_code_context]
         llm_analysis, final_response = _explain_code_with_llm(
             user_request=user_request,
             task_type=task_type,

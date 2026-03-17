@@ -55,6 +55,7 @@ class AgentState(TypedDict, total=False):
     candidate_files: List[str]
     selected_files: List[str]
     code_context: List[CodeChunk]
+    operation_history: List[str]
 
     # 浏览器/CDP 连接信息
     remote_debugging_url: str          # 例如: http://127.0.0.1:9222
