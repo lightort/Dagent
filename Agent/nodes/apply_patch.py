@@ -32,6 +32,7 @@ def apply_patch_node(state: AgentState) -> AgentState:
     
     # 更新状态
     updated_state = state.copy()
+    updated_state["last_step"] = state.get("current_step", "")
     updated_state["applied_patches"] = applied_patches
     updated_state["current_step"] = "apply_patch"
     updated_state["next_step"] = "finish"

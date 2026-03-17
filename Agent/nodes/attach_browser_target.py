@@ -21,6 +21,7 @@ def attach_browser_target_node(state: AgentState) -> AgentState:
     """
     new_state: AgentState = dict(state)
     new_state["current_step"] = "attach_browser_target"
+    new_state["last_step"] = state.get("current_step", "")
 
     try:
         remote_debugging_url = _safe_str(

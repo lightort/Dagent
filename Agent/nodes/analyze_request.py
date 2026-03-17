@@ -50,8 +50,9 @@ search_phase 含义：
 6. 如果 search_phase 是 chunk，通常应选择 search_in_file
 7. 如果 search_phase 是 read，通常应选择 read_file
 8. 如果 search_phase 是 action，才应考虑 attach_browser_target / inspect_runtime / modify_code / refactor_code / finish / search_file
-9. 只有在任务已经足够完成时，才能选择 finish
-10. analysis 要简洁说明判断依据
+9. 如果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点
+10. 只有在任务已经足够完成时，才能选择 finish
+11. analysis 要简洁说明判断依据
 
 输出格式必须严格为：
 {
@@ -89,6 +90,7 @@ def analyze_request_node(state: AgentState) -> AgentState:
     updated_state["error"] = None
 
     try:
+        updated_state["last_step"] = state.get("current_step", "")
         user_request = state.get("user_request", "")
         workspace_summary = state.get("workspace_summary", {})
         candidate_files = state.get("candidate_files", [])
@@ -194,6 +196,8 @@ has_runtime_analysis: {bool(runtime_analysis)}
 - 如果 search_phase=chunk，不要跳过 search_in_file
 - 如果 search_phase=read，不要跳过 read_file
 - 如果 search_phase=action，才考虑 attach_browser_target / inspect_runtime / modify_code / refactor_code / finish / search_file
+- 如果 last_step 是inspect_runtime 或 read_file, 下一步不得选择再次 inspect_runtime 或 read_file，以避免重复执行同一节点
+- 只有在任务已经足够完成时，才能选择 finish
 - 只能输出 JSON
 - next_step 只能是 attach_browser_target / inspect_runtime / search_file / read_file / search_in_file / modify_code / refactor_code / finish
 - task_type 只能是 debug / modify / refactor / search

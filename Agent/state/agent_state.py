@@ -89,6 +89,7 @@ class AgentState(TypedDict, total=False):
     patches: List[Patch]
 
     # 执行控制
+    last_step : str 
     current_step: str
     next_step: str
     error: Optional[str]

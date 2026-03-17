@@ -58,6 +58,7 @@ def check_task_status_node(state: AgentState) -> AgentState:
     updated_state = state.copy()
     updated_state["current_step"] = "check_task_status"
     updated_state["error"] = None
+    updated_state["last_step"] = state.get("current_step", "")
 
     try:
         user_request = state.get("user_request", "") or ""

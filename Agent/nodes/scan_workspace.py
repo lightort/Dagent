@@ -108,6 +108,7 @@ def scan_workspace_node(state: AgentState) -> AgentState:
     
 
         updated_state["workspace_summary"] = workspace_summary
+        updated_state["last_step"] = None
         updated_state["error"] = None
 
         print(f"Workspace scanned. Found {len(workspace_summary['files'])} files.")

@@ -448,6 +448,7 @@ def search_in_file_node(state: AgentState) -> AgentState:
 
     updated_state = state.copy()
     updated_state["current_step"] = "search_in_file"
+    updated_state["last_step"] = state.get("current_step", "")
     updated_state["error"] = None
 
     try:

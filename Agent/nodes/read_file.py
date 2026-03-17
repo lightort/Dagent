@@ -284,7 +284,7 @@ def read_file_node(state: AgentState) -> AgentState:
     updated_state = state.copy()
     updated_state["current_step"] = "read_file"
     updated_state["error"] = None
-
+    updated_state["last_step"] = state.get("current_step", "")
     try:
         workspace_root = state.get("workspace_root", "") or os.getcwd()
         selected_files = state.get("selected_files", []) or []

@@ -126,7 +126,7 @@ def inspect_runtime_node(state: AgentState) -> AgentState:
     """
     new_state: AgentState = dict(state)
     new_state["current_step"] = "inspect_runtime"
-    
+    new_state["last_step"] = state.get("current_step", "")
     print("Inspecting runtime environment...")
 
     try:
