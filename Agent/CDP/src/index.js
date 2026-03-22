@@ -25,6 +25,7 @@ const dirCommand = new (require('./commands/dir'))(fileSystem);
 const viewCommand = new (require('./commands/view'))(fileViewer);
 const breakpointCommand = new (require('./commands/breakpoint'))(debuggerModule);
 const networkCommand = new (require('./commands/network'))(debuggerModule);
+const clickCommand = new (require('./commands/click'))(debuggerModule);
 
 // 设置命令行参数
 program
@@ -52,6 +53,7 @@ dirCommand.register(program);
 viewCommand.register(program);
 breakpointCommand.register(program);
 networkCommand.register(program);
+clickCommand.register(program);
 
 // 添加帮助命令
 program.command('help-all')

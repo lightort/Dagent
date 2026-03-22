@@ -16,15 +16,25 @@ npm install
 # 启动 Chrome 浏览器并开启远程调试
 chrome --remote-debugging-port=9222
 
-& "C:\Users\lenovo\Desktop\项目\CDP\chrome-win64\chrome.exe" --remote-debugging-port=9222
 
-Start-Process -FilePath ./chrome-win64/chrome.exe -ArgumentList '--remote-debugging-port=9222', 'D:\Projects\debug_tool\web_app\test1\demo-page.html' 
 
-Start-Process -FilePath ./chrome-win64/chrome.exe -ArgumentList '--remote-debugging-port=9222', 'C:\Users\lenovo\Desktop\项目\CDP\examples\demo-page.html'
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
 
-Start-Process -FilePath ./chrome-win64/chrome.exe -ArgumentList '--remote-debugging-port=9222', 'D:\Projects\debug_tool\WebPage\index.html'
+Start-Process -FilePath C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe -ArgumentList '--remote-debugging-port=9222', 'D:\Projects\debug_tool\web_app\test1\demo-page.html' 
+
+Start-Process -FilePath C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe -ArgumentList '--remote-debugging-port=9222', 'C:\Users\lenovo\Desktop\项目\CDP\examples\demo-page.html'
+
+Start-Process -FilePath "D:\Projects\debug_tool\CDP\chrome-win64\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "D:\Projects\Dagent\Agent\WebPage\index.html"
+
+Start-Process -FilePath "D:\Projects\debug_tool\CDP\chrome-win64\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "D:\Projects\Dagent\Agent\WebPage\index.html"
 ```
 
+
+Stop-Process -Name chrome -Force -ErrorAction SilentlyContinue
+
+Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "--user-data-dir=C:\tmp\chrome-cdp-profile", "file:///C:/Users/14590/Desktop/Dagent/WebPage/index.html"
+  
 ## 全局参数
 
 ```bash

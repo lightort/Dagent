@@ -743,7 +743,7 @@ class Debugger {
    * @param {number} frameIndex - 调用栈帧索引，默认为0（当前帧）
    * @returns {Promise<Object>} 代码上下文信息
    */
-  async getCurrentCodeContext(contextLines = 3, frameIndex = 0) {
+  async getCurrentCodeContext(contextLines = 30, frameIndex = 0, format = true) {
     try {
       // 检查是否处于暂停状态
       if (!this._isPaused || !this._callFrames || this._callFrames.length === 0) {
@@ -766,66 +766,48 @@ class Debugger {
         scriptId
       });
 
-      const sourceCode = result.scriptSource;
+      let sourceCode = result.scriptSource;
+
+      // 如果需要格式化，使用fileViewer进行格式化
+      if (format && this.fileViewer) {
+        try {
+          // 判断代码类型
+          let language = 'js';
+          if (url.endsWith('.css')) {
+            language = 'css';
+          } else if (url.endsWith('.html') || url.endsWith('.htm')) {
+            language = 'html';
+          }
+
+          const formatResult = await this.fileViewer.formatContent(sourceCode, language);
+          sourceCode = formatResult.content;
+        } catch (error) {
+          console.warn('代码格式化失败，使用原始代码:', error.message);
+        }
+      }
+
       const lines = sourceCode.split('\n');
 
       // 提取上下文代码
       const context = [];
 
-      // 处理单行文件的情况
-      if (lines.length === 1) {
-        const lineContent = lines[0];
-        const lineLength = lineContent.length;
-        const singleLine = true;
+      // 处理多行文件的情况（即使原始是单行，格式化后也会变成多行）
+      const startLine = Math.max(0, lineNumber - contextLines);
+      const endLine = Math.min(lines.length - 1, lineNumber + contextLines);
 
-        // 如果列号超过了行长度，设置为行末尾
-        const adjustedColumnNumber = Math.min(columnNumber, lineLength - 1);
-
-        // 计算上下文范围（字符数）
-        const charsPerLine = 80; // 每行显示的字符数
-        const contextChars = contextLines * charsPerLine;
-
-        // 计算上下文的起始和结束位置
-        let startPos = Math.max(0, adjustedColumnNumber - contextChars);
-        let endPos = Math.min(lineLength - 1, adjustedColumnNumber + contextChars);
-
-        // 如果内容较短，显示全部
-        if (lineLength <= contextChars * 2) {
-          startPos = 0;
-          endPos = lineLength - 1;
+      for (let i = startLine; i <= endLine; i++) {
+        const lineItem = {
+          line: i + 1, // 转换为1基行号
+          content: lines[i] || '',
+          isCurrent: i === lineNumber
+        };
+        
+        // 为当前行添加列号信息
+        if (i === lineNumber) {
+          lineItem.columnNumber = columnNumber;
         }
-
-        // 提取上下文内容
-        const contextContent = lineContent.substring(startPos, endPos + 1);
-
-        // 添加到上下文列表
-        context.push({
-          line: lineNumber + 1, // 转换为1基行号
-          content: contextContent,
-          isCurrent: true,
-          columnNumber: adjustedColumnNumber - startPos, // 相对于上下文起始位置的列号
-          startPos, // 上下文在原始行中的起始位置
-          endPos // 上下文在原始行中的结束位置
-        });
-      } else {
-        // 处理多行文件的情况
-        const startLine = Math.max(0, lineNumber - contextLines);
-        const endLine = Math.min(lines.length - 1, lineNumber + contextLines);
-
-        for (let i = startLine; i <= endLine; i++) {
-          const lineItem = {
-            line: i + 1, // 转换为1基行号
-            content: lines[i] || '',
-            isCurrent: i === lineNumber
-          };
-          
-          // 为当前行添加列号信息
-          if (i === lineNumber) {
-            lineItem.columnNumber = columnNumber;
-          }
-          
-          context.push(lineItem);
-        }
+        
+        context.push(lineItem);
       }
 
       return {
@@ -833,7 +815,8 @@ class Debugger {
         lineNumber: lineNumber + 1, // 转换为1基行号
         columnNumber: columnNumber + 1, // 转换为1基列号
         contextLines: context,
-        totalLines: lines.length
+        totalLines: lines.length,
+        formatted: format
       };
     } catch (error) {
       console.error('获取代码上下文失败:', error.message);
@@ -1978,6 +1961,146 @@ class Debugger {
    */
   async getNetworkRequestDetails(requestId) {
     return this._networkRequests.get(requestId) || null;
+  }
+
+  /**
+   * 启用点击事件监听
+   * 当用户点击页面元素时，会触发断点并进入调试模式
+   * @returns {Promise<void>}
+   */
+  async enableClickBreakpoint() {
+    try {
+      if (!this.client) {
+        await this.initialize();
+      }
+
+      console.log('🖱️  正在启用点击事件监听...');
+
+      const clickListenerScript = `
+        (function() {
+          if (window.__cdpClickListenerInstalled) {
+            return 'already_installed';
+          }
+
+          const clickHandler = function(event) {
+            const target = event.target;
+            const tagName = target.tagName;
+            const id = target.id || '';
+            const className = target.className || '';
+            const text = target.textContent ? target.textContent.substring(0, 50) : '';
+            
+            console.log('🖱️  点击事件触发:', {
+              tag: tagName,
+              id: id,
+              className: className,
+              text: text,
+              x: event.clientX,
+              y: event.clientY
+            });
+
+            debugger;
+          };
+
+          document.addEventListener('click', clickHandler, true);
+          window.__cdpClickListenerInstalled = true;
+
+          return 'installed';
+        })()
+      `;
+
+      const result = await this.connectionManager.execute('Runtime', 'evaluate', {
+        expression: clickListenerScript,
+        returnByValue: true
+      });
+
+      if (result.result && result.result.value === 'installed') {
+        console.log('✅ 点击事件监听已启用');
+        console.log('💡 现在点击页面上的任何元素都会触发断点');
+        console.log('💡 使用 "cdp click start" 开始监听，"cdp click stop" 停止监听');
+      } else if (result.result && result.result.value === 'already_installed') {
+        console.log('ℹ️  点击事件监听已经启用');
+      } else {
+        console.warn('⚠️  启用点击事件监听可能失败');
+      }
+    } catch (error) {
+      console.error('❌ 启用点击事件监听失败:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 禁用点击事件监听
+   * @returns {Promise<void>}
+   */
+  async disableClickBreakpoint() {
+    try {
+      if (!this.client) {
+        await this.initialize();
+      }
+
+      console.log('🖱️  正在禁用点击事件监听...');
+
+      const removeListenerScript = `
+        (function() {
+          if (!window.__cdpClickListenerInstalled) {
+            return 'not_installed';
+          }
+
+          if (window.__cdpClickHandler) {
+            document.removeEventListener('click', window.__cdpClickHandler, true);
+          }
+
+          window.__cdpClickListenerInstalled = false;
+          delete window.__cdpClickHandler;
+
+          return 'removed';
+        })()
+      `;
+
+      const result = await this.connectionManager.execute('Runtime', 'evaluate', {
+        expression: removeListenerScript,
+        returnByValue: true
+      });
+
+      if (result.result && result.result.value === 'removed') {
+        console.log('✅ 点击事件监听已禁用');
+      } else if (result.result && result.result.value === 'not_installed') {
+        console.log('ℹ️  点击事件监听未启用');
+      } else {
+        console.warn('⚠️  禁用点击事件监听可能失败');
+      }
+    } catch (error) {
+      console.error('❌ 禁用点击事件监听失败:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查点击事件监听是否已启用
+   * @returns {Promise<boolean>} 是否已启用
+   */
+  async isClickBreakpointEnabled() {
+    try {
+      if (!this.client) {
+        await this.initialize();
+      }
+
+      const checkScript = `
+        (function() {
+          return window.__cdpClickListenerInstalled === true;
+        })()
+      `;
+
+      const result = await this.connectionManager.execute('Runtime', 'evaluate', {
+        expression: checkScript,
+        returnByValue: true
+      });
+
+      return result.result && result.result.value === true;
+    } catch (error) {
+      console.error('❌ 检查点击事件监听状态失败:', error.message);
+      return false;
+    }
   }
 }
 

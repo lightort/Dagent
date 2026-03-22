@@ -660,9 +660,9 @@ class FileViewer {
    */
   async formatContent(content, language = 'js') {
     try {
-      // 仅支持JavaScript的AST格式化
+      // 仅支持JavaScript的格式化
       if (language === 'js' || language === 'javascript') {
-        return this.formatWithAST(content);
+        return this.formatWithJSBeautify(content);
       } else {
         // 非JavaScript语言不支持格式化
         console.warn('仅支持JavaScript代码格式化');
@@ -1388,6 +1388,94 @@ class FileViewer {
    */
   setPositionMap(url, map) {
     this.positionMaps[url] = map;
+  }
+
+  /**
+   * 使用js-beautify格式化JavaScript代码
+   * @param {string} content - 要格式化的JavaScript代码
+   * @returns {Object} 包含格式化内容和位置映射的对象
+   */
+  formatWithJSBeautify(content) {
+    try {
+      // 性能优化：快速检查无效输入
+      if (!content || typeof content !== 'string') {
+        console.error('无效的代码内容');
+        return { 
+          content: content || '', 
+          map: {},
+          sourceMap: null,
+          success: false,
+          error: '无效的代码内容'
+        };
+      }
+
+      // 加载js-beautify
+      const jsBeautify = require('js-beautify');
+
+      // 配置格式化选项
+      const options = {
+        indent_size: 2,
+        indent_char: ' ',
+        indent_with_tabs: false,
+        preserve_newlines: true,
+        max_preserve_newlines: 2,
+        wrap_line_length: 80,
+        brace_style: 'collapse',
+        indent_scripts: 'normal',
+        keep_array_indentation: false,
+        keep_function_indentation: false,
+        space_before_conditional: true,
+        break_chained_methods: false,
+        eval_code: false,
+        unescape_strings: false,
+        wrap_attributes: 'auto'
+      };
+
+      // 格式化代码
+      const formattedContent = jsBeautify.js(content, options);
+
+      // 生成简单的位置映射（虽然对于格式化来说可能不需要精确映射）
+      const positionMap = {};
+      const reverseMap = {};
+
+      // 为了兼容性，创建一个基本的映射
+      const originalLines = content.split('\n');
+      const formattedLines = formattedContent.split('\n');
+
+      // 简单的行映射（可能不够精确，但对于显示来说足够了）
+      formattedLines.forEach((line, index) => {
+        positionMap[index + 1] = {
+          originalLine: Math.min(index, originalLines.length - 1),
+          originalColumn: 0,
+          endLine: Math.min(index, originalLines.length - 1),
+          endColumn: 0,
+          nodeType: 'statement'
+        };
+
+        reverseMap[index] = {
+          formattedLine: index + 1,
+          formattedColumn: 0
+        };
+      });
+
+      return {
+        content: formattedContent,
+        map: positionMap,
+        reverseMap: reverseMap,
+        sourceMap: null,
+        success: true,
+        error: null
+      };
+    } catch (error) {
+      console.error('使用js-beautify格式化失败:', error.message);
+      return {
+        content: content,
+        map: {},
+        sourceMap: null,
+        success: false,
+        error: error.message
+      };
+    }
   }
 }
 
