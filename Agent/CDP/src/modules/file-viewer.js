@@ -550,17 +550,22 @@ class FileViewer {
        const path = require('path');
        
        // 处理本地文件路径（支持file://协议和相对/绝对路径）
-       let isLocalFile = url.startsWith('file://');
-       
-       // 检查是否是相对路径或绝对路径的本地文件
-       if (!isLocalFile && !url.startsWith('http://') && !url.startsWith('https://')) {
-         // 检查文件是否存在
-         const localPath = path.resolve(url);
-         if (fs.existsSync(localPath)) {
-           isLocalFile = true;
-           url = localPath;
-         }
-       }
+      let isLocalFile = url.startsWith('file://');
+      
+      // 检查是否是相对路径或绝对路径的本地文件
+      if (!isLocalFile && !url.startsWith('http://') && !url.startsWith('https://')) {
+        // 检查URL是否为空
+        if (!url || url.trim() === '') {
+          throw new Error('无效的URL: 空字符串');
+        }
+        
+        // 检查文件是否存在
+        const localPath = path.resolve(url);
+        if (fs.existsSync(localPath)) {
+          isLocalFile = true;
+          url = localPath;
+        }
+      }
        
        if (isLocalFile) {
          let localPath = url;
@@ -662,15 +667,20 @@ class FileViewer {
     try {
       // 仅支持JavaScript的格式化
       if (language === 'js' || language === 'javascript') {
-        return this.formatWithJSBeautify(content);
+        const result = this.formatWithJSBeautify(content);
+        // 确保返回对象包含reverseMap
+        if (result.map && !result.reverseMap) {
+          result.reverseMap = result.map.reverseMap || {};
+        }
+        return result;
       } else {
         // 非JavaScript语言不支持格式化
         console.warn('仅支持JavaScript代码格式化');
-        return { content, map: {} };
+        return { content, map: {}, reverseMap: {} };
       }
     } catch (error) {
       console.error('代码格式化失败:', error.message);
-      return { content, map: {} };
+      return { content, map: {}, reverseMap: {} };
     }
   }
 
@@ -1403,6 +1413,7 @@ class FileViewer {
         return { 
           content: content || '', 
           map: {},
+          reverseMap: {},
           sourceMap: null,
           success: false,
           error: '无效的代码内容'
@@ -1445,14 +1456,14 @@ class FileViewer {
       // 简单的行映射（可能不够精确，但对于显示来说足够了）
       formattedLines.forEach((line, index) => {
         positionMap[index + 1] = {
-          originalLine: Math.min(index, originalLines.length - 1),
+          originalLine: Math.min(index, originalLines.length - 1) + 1, // 1基行号
           originalColumn: 0,
-          endLine: Math.min(index, originalLines.length - 1),
+          endLine: Math.min(index, originalLines.length - 1) + 1,
           endColumn: 0,
           nodeType: 'statement'
         };
 
-        reverseMap[index] = {
+        reverseMap[index + 1] = {
           formattedLine: index + 1,
           formattedColumn: 0
         };
@@ -1471,6 +1482,7 @@ class FileViewer {
       return {
         content: content,
         map: {},
+        reverseMap: {},
         sourceMap: null,
         success: false,
         error: error.message

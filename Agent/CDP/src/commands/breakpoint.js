@@ -280,6 +280,20 @@ class BreakpointCommand {
           process.exit(1);
         }
       });
+
+    // 连续设置5个断点
+    program.command('breakpoint-seq <input>')
+      .description('根据输入格式连续设置5个断点，输入格式如 "s.accountSubmit (chunk-858ed276.7bbb8c3f.js:12:106286)"')
+      .action(async (input) => {
+        try {
+          const parsed = this._parseInputFormat(input);
+          await this._setupSequentialBreakpoints(parsed.file, parsed.line, parsed.column);
+          process.exit(0);
+        } catch (error) {
+          console.error(`设置连续断点失败: ${error.message}`);
+          process.exit(1);
+        }
+      });
   }
 
   /**
@@ -375,44 +389,47 @@ class BreakpointCommand {
       
       // 设置断点命中事件监听器
       if (!this._breakpointHitListener) {
-        this._breakpointHitListener = (event) => {
+        this._breakpointHitListener = async (event) => {
           console.log('\n🎯 断点命中!');
           console.log(`   位置: ${event.url} 第 ${event.lineNumber} 行`);
-          
+
           // 如果有格式化位置信息，显示出来
           if (event.formattedPosition) {
             console.log(`   格式化代码位置: 第 ${event.formattedPosition.formattedLine} 行 第 ${event.formattedPosition.formattedColumn} 列`);
           }
-          
+
           console.log(`   调用栈:`);
-          
+
           // 显示调用栈信息
           if (event.callFrames && event.callFrames.length > 0) {
-            event.callFrames.forEach((frame, index) => {
+            // 解析调用栈中的scriptId为实际URL
+            const resolvedFrames = await this.debugger.resolveCallStackUrls(event.callFrames);
+
+            resolvedFrames.forEach((frame, index) => {
               // 确保frame有所有必要的属性
               const functionName = frame.functionName || '(匿名函数)';
-              
+
               // 构造更友好的位置信息
               let locationInfo = 'unknown';
               if (frame.url && frame.url !== 'unknown') {
                 // 尝试提取文件名
                 const urlParts = frame.url.split('/');
                 const fileName = urlParts[urlParts.length - 1] || frame.url;
-                
+
                 // 确保行号和列号存在且是数字
-                const lineNum = frame.lineNumber !== undefined && !isNaN(frame.lineNumber) 
+                const lineNum = frame.lineNumber !== undefined && !isNaN(frame.lineNumber)
                   ? parseInt(frame.lineNumber) + 1 // 转换为1基行号
                   : '?';
-                
-                const colNum = frame.columnNumber !== undefined && !isNaN(frame.columnNumber) 
+
+                const colNum = frame.columnNumber !== undefined && !isNaN(frame.columnNumber)
                   ? parseInt(frame.columnNumber) + 1 // 转换为1基列号
                   : '?';
-                
+
                 locationInfo = `${fileName}:${lineNum}:${colNum}`;
               } else if (frame.scriptId) {
                 locationInfo = `script:${frame.scriptId}`;
               }
-              
+
               console.log(`     ${index}. ${functionName} (${locationInfo})`);
             });
           } else {
@@ -757,6 +774,74 @@ class BreakpointCommand {
     cdp continue
     cdp eval "document.title"
 `;
+  }
+
+  /**
+   * 解析输入格式，提取文件名、行号和列号
+   * @private
+   * @param {string} input - 输入字符串，格式如 "s.accountSubmit (chunk-858ed276.7bbb8c3f.js:12:106286)"
+   * @returns {Object} 解析结果，包含file、line、column属性
+   */
+  _parseInputFormat(input) {
+    // 匹配格式：函数名 (文件名:行号:列号)
+    const regex = /\(([^:]+):(\d+):(\d+)\)/;
+    const match = input.match(regex);
+    
+    if (!match) {
+      throw new Error('输入格式无效，请使用类似 "functionName (filename.js:line:column)" 的格式');
+    }
+    
+    return {
+      file: match[1],
+      line: parseInt(match[2]),
+      column: parseInt(match[3])
+    };
+  }
+
+  /**
+   * 连续设置5个断点
+   * @private
+   * @param {string} file - 文件名
+   * @param {number} startLine - 起始行号
+   * @param {number} startColumn - 起始列号
+   * @returns {Promise<void>}
+   */
+  async _setupSequentialBreakpoints(file, startLine, startColumn) {
+    console.log(`开始连续设置5个断点...`);
+    console.log(`目标文件: ${file}`);
+    console.log(`起始位置: 第 ${startLine} 行, 第 ${startColumn} 列`);
+    
+    const breakpointsCount = 5;
+    const columnStep = 100; // 每次增加的列号间隔
+    
+    for (let i = 0; i < breakpointsCount; i++) {
+      const currentColumn = startColumn + (i * columnStep);
+      
+      try {
+        const breakpointOptions = {
+          columnNumber: currentColumn
+        };
+        
+        const breakpointId = await this.debugger.setBreakpoint(file, startLine, breakpointOptions);
+        
+        if (breakpointId) {
+          console.log(`✅ 断点 ${i + 1}/5 设置成功!`);
+          console.log(`   断点ID: ${breakpointId}`);
+          console.log(`   位置: ${file}:${startLine}:${currentColumn}`);
+        } else {
+          console.log(`⚠️  断点 ${i + 1}/5 设置失败或已存在`);
+        }
+      } catch (error) {
+        console.error(`❌ 断点 ${i + 1}/5 设置失败: ${error.message}`);
+      }
+      
+      // 短暂延迟，避免请求过于频繁
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log(`\n📋 连续断点设置完成!`);
+    console.log(`已尝试在 ${file}:${startLine} 行设置 ${breakpointsCount} 个断点`);
+    console.log(`断点信息已保存到 .cdp-breakpoints.json 文件`);
   }
 
   /**

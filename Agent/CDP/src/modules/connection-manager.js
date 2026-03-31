@@ -252,58 +252,99 @@ class ConnectionManager {
       }
 
       // 尝试使用 Debugger.getScriptSources 命令（推荐）
-      console.log('尝试使用 Debugger.getScriptSources 获取脚本...');
-      const result = await this.execute('Debugger', 'getScriptSources');
-      
-      let scripts = [];
-      if (result && result.scriptSources) {
-        console.log(`成功获取到 ${result.scriptSources.length} 个脚本源`);
-        scripts = result.scriptSources.map(source => ({
-          scriptId: source.scriptId,
-          url: source.url || '',
-          sourceMapURL: source.sourceMapURL || '',
-          length: source.length || 0,
-          startLine: source.startLine || 0,
-          startColumn: source.startColumn || 0,
-          endLine: source.endLine || 0,
-          endColumn: source.endColumn || 0
-        }));
-        return scripts;
-      } else if (result && result.scripts) {
-        console.log(`成功获取到 ${result.scripts.length} 个脚本`);
-        return result.scripts;
+      try {
+        const result = await this.execute('Debugger', 'getScriptSources');
+        
+        let scripts = [];
+        if (result && result.scriptSources) {
+          scripts = result.scriptSources.map(source => ({
+            scriptId: source.scriptId,
+            url: source.url || '',
+            sourceMapURL: source.sourceMapURL || '',
+            length: source.length || 0,
+            startLine: source.startLine || 0,
+            startColumn: source.startColumn || 0,
+            endLine: source.endLine || 0,
+            endColumn: source.endColumn || 0
+          }));
+          return scripts;
+        } else if (result && result.scripts) {
+          return result.scripts;
+        }
+      } catch (error) {
+        // 静默失败，尝试下一个方法
       }
-    } catch (error) {
-      console.log(`Debugger.getScriptSources 失败: ${error.message}`);
       
       // 如果 Debugger.getScriptSources 失败，尝试使用 Debugger.getScripts
       try {
-        console.log('尝试使用 Debugger.getScripts 获取脚本...');
         const result = await this.execute('Debugger', 'getScripts');
         
         if (result && result.scripts) {
-          console.log(`成功获取到 ${result.scripts.length} 个脚本`);
           return result.scripts;
         }
       } catch (error2) {
-        console.error('获取脚本信息失败:', error2.message);
-        
-        // 尝试Debugger.enable后再重试一次
-        try {
-          console.log('尝试重新启用Debugger域...');
-          await this.execute('Debugger', 'enable');
-          
-          console.log('再次尝试使用 Debugger.getScripts 获取脚本...');
-          const result = await this.execute('Debugger', 'getScripts');
-          
-          if (result && result.scripts) {
-            console.log(`成功获取到 ${result.scripts.length} 个脚本`);
-            return result.scripts;
-          }
-        } catch (error3) {
-          console.error('所有获取脚本的尝试都失败了:', error3.message);
-        }
+        // 静默失败，尝试下一个方法
       }
+      
+      // 如果以上都失败，使用 Runtime.evaluate 通过 JavaScript 获取脚本信息
+      try {
+        const scripts = await this._getScriptsViaRuntime();
+        if (scripts && scripts.length > 0) {
+          return scripts;
+        }
+      } catch (error3) {
+        console.warn('通过 Runtime 获取脚本失败:', error3.message);
+      }
+    } catch (error) {
+      console.warn('获取脚本信息失败:', error.message);
+    }
+    
+    return [];
+  }
+
+  /**
+   * 通过 Runtime.evaluate 获取页面中所有脚本的信息
+   * 这是一个备选方案，用于不支持 Debugger.getScriptSources 的 Chrome 版本
+   * @private
+   * @returns {Promise<Array>} 脚本信息数组
+   */
+  async _getScriptsViaRuntime() {
+    try {
+      const client = await this.connect();
+      
+      // 使用 JavaScript 获取所有脚本标签的信息
+      const expression = `
+        (function() {
+          const scripts = document.querySelectorAll('script[src]');
+          const result = [];
+          scripts.forEach((script, index) => {
+            if (script.src) {
+              result.push({
+                scriptId: 'script_' + index,
+                url: script.src,
+                sourceMapURL: '',
+                length: 0,
+                startLine: 0,
+                startColumn: 0,
+                endLine: 0,
+                endColumn: 0
+              });
+            }
+          });
+          return result;
+        })()
+      `;
+      
+      const { result } = await client.Runtime.evaluate({
+        expression: expression,
+        returnByValue: true
+      });
+      
+      if (result.value && Array.isArray(result.value)) {
+        return result.value;
+      }
+    } catch (error) {
+      console.warn('通过 Runtime 获取脚本信息失败:', error.message);
     }
     
     return [];

@@ -77,7 +77,7 @@ class ClickCommand {
       }
 
       if (!this._clickListener) {
-        this._clickListener = (event) => {
+        this._clickListener = async (event) => {
           console.log('\n🎯 点击事件触发断点!');
           console.log(`   位置: ${event.url} 第 ${event.lineNumber} 行`);
 
@@ -88,18 +88,21 @@ class ClickCommand {
           console.log(`   调用栈:`);
 
           if (event.callFrames && event.callFrames.length > 0) {
-            event.callFrames.forEach((frame, index) => {
+            // 解析调用栈中的scriptId为实际URL
+            const resolvedFrames = await this.debugger.resolveCallStackUrls(event.callFrames);
+
+            resolvedFrames.forEach((frame, index) => {
               const functionName = frame.functionName || '(匿名函数)';
               let locationInfo = 'unknown';
-              
+
               if (frame.url && frame.url !== 'unknown') {
                 const urlParts = frame.url.split('/');
                 const fileName = urlParts[urlParts.length - 1] || frame.url;
-                const lineNum = frame.lineNumber !== undefined && !isNaN(frame.lineNumber) 
-                  ? parseInt(frame.lineNumber) + 1 
+                const lineNum = frame.lineNumber !== undefined && !isNaN(frame.lineNumber)
+                  ? parseInt(frame.lineNumber) + 1
                   : '?';
-                const colNum = frame.columnNumber !== undefined && !isNaN(frame.columnNumber) 
-                  ? parseInt(frame.columnNumber) + 1 
+                const colNum = frame.columnNumber !== undefined && !isNaN(frame.columnNumber)
+                  ? parseInt(frame.columnNumber) + 1
                   : '?';
                 locationInfo = `${fileName}:${lineNum}:${colNum}`;
               } else if (frame.scriptId) {
@@ -183,10 +186,16 @@ class ClickCommand {
           await this.debugger.resume();
         } else if (command === 'next' || command === 'n') {
           await this.debugger.stepOver();
+          // 不立即调用 prompt，等待 breakpointHit 事件触发后再调用
+          return;
         } else if (command === 'step' || command === 's') {
           await this.debugger.stepInto();
+          // 不立即调用 prompt，等待 breakpointHit 事件触发后再调用
+          return;
         } else if (command === 'out' || command === 'o') {
           await this.debugger.stepOut();
+          // 不立即调用 prompt，等待 breakpointHit 事件触发后再调用
+          return;
         } else if (command.startsWith('eval')) {
           const expression = parts.slice(1).join(' ');
           if (expression) {
@@ -240,15 +249,15 @@ class ClickCommand {
             const frameIndex = parts.length > 2 ? parseInt(parts[2], 10) : 0;
             
             console.log(`🔍 正在获取当前断点位置的代码上下文...`);
-            const codeContext = await this.debugger.getCurrentCodeContext(contextLines, frameIndex, true);
+            const codeContext = await this.debugger.getCurrentCodeContext(contextLines, frameIndex, false);
             
             console.log(`\n📄 代码上下文 (${codeContext.url})`);
             console.log(`📌 断点位置: 第 ${codeContext.lineNumber} 行`);
             if (codeContext.columnNumber) {
               console.log(`📌 断点列号: 第 ${codeContext.columnNumber} 列`);
             }
-            if (codeContext.formatted) {
-              console.log(`✨ 代码已格式化`);
+            if (codeContext.functionName) {
+              console.log(`📌 函数名: ${codeContext.functionName}`);
             }
             console.log('='.repeat(80));
             
@@ -256,25 +265,11 @@ class ClickCommand {
               const lineNumber = lineInfo.line.toString().padStart(4, ' ');
               const marker = lineInfo.isCurrent ? '→' : ' ';
               
-              if (lineInfo.isCurrent && lineInfo.columnNumber !== undefined) {
-                const content = lineInfo.content;
-                const column = lineInfo.columnNumber;
-                const safeColumn = Math.min(Math.max(0, column), content.length);
-                const markedContent = content.slice(0, safeColumn) + '[我是标记]' + content.slice(safeColumn);
-                console.log(`${marker} ${lineNumber} | ${markedContent}`);
-                
-                if (codeContext.totalLines === 1) {
-                  const indent = `    | `.length;
-                  const arrowLine = ' '.repeat(indent + safeColumn) + '↑';
-                  console.log(arrowLine);
-                }
-              } else {
-                console.log(`${marker} ${lineNumber} | ${lineInfo.content}`);
-              }
+              console.log(`${marker} ${lineNumber} | ${lineInfo.content}`);
             });
             
             console.log('='.repeat(80));
-            console.log(`📊 共显示 ${codeContext.contextLines.length} 行，文件总计 ${codeContext.totalLines} 行`);
+            console.log(`📊 共显示 ${codeContext.contextLines.length} 行`);
           } catch (error) {
             console.error(`❌ 获取代码上下文失败: ${error.message}`);
           }

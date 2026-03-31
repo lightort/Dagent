@@ -1,0 +1,125 @@
+调试变量导出报告
+==================
+导出时间: 2026/3/30 19:37:33
+==================
+
+this
+====
+无法获取: 对象引用链过长
+
+局部变量
+====
+event: Object {
+  type: "object",
+  constructor: "PointerEvent",
+  isArray: false
+}
+target: Object {
+  type: "object",
+  constructor: "HTMLButtonElement",
+  isArray: false
+}
+tagName: "BUTTON"
+id: "[无法访问]"
+className: "login-form-button ant-btn ant-btn-primary"
+text: "登 录"
+
+全局变量
+====
+window: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+self: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+document: Object {
+  type: "object",
+  constructor: "HTMLDocument",
+  isArray: false
+}
+name: "[无法访问]"
+location: Object {
+  type: "object",
+  constructor: "Location",
+  isArray: false
+}
+customElements: Object {
+  type: "object",
+  constructor: "CustomElementRegistry",
+  isArray: false
+}
+history: Object {
+  type: "object",
+  constructor: "History",
+  isArray: false,
+  length: 1
+}
+navigation: Object {
+  type: "object",
+  constructor: "Navigation",
+  isArray: false
+}
+locationbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+menubar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+personalbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+scrollbars: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+statusbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+toolbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+status: "[无法访问]"
+closed: "[无法访问]"
+frames: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+length: "[无法访问]"
+top: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+opener: "[无法访问]"
+
+函数参数
+====
+note: "CDP版本不支持直接获取函数参数"
+
+调用信息
+====
+文件: https://yngwypt.zmnyjk.com/js/chunk-858ed276.7bbb8c3f.js
+行号: 23
+列号: 13
+函数名: window.__cdpClickHandler
+

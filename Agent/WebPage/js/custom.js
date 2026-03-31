@@ -6,309 +6,285 @@
 Theme by: WebThemez.com
 Note: Please use our back link in your site
 */
-$( function() {
-        var endDate = "December  27, 2027 15:03:25";
-
-        $('.countdown.simple').countdown({ date: endDate });
-
-        $('.countdown.styled').countdown({
-          date: endDate,
-          render: function(data) {
-            $(this.el).html("<div>" + this.leadingZeros(data.days, 3) + " <span>days</span></div><div>" + this.leadingZeros(data.hours, 2) + " <span>hrs</span></div><div>" + this.leadingZeros(data.min, 2) + " <span>min</span></div><div>" + this.leadingZeros(data.sec, 2) + " <span>sec</span></div>");
-          }
-        });
-
-        $('.countdown.callback').countdown({
-          date: +(new Date) + 10000,
-          render: function(data) {
-            $(this.el).text(this.leadingZeros(data.sec, 2) + " sec");
-          },
-          onEnd: function() {
-            $(this.el).addClass('ended');
-          }
-        }).on("click", function() {
-          $(this).removeClass('ended').data('countdown').update(+(new Date) + 10000).start();
-        });
-		
-		
-		
-      });
-   
-   
-var customScripts = {
- 
-    onePageNav: function () {
-
-        $('#mainNav').onePageNav({
-            currentClass: 'active',
-            changeHash: false,
-            scrollSpeed: 950,
-            scrollThreshold: 0.2,
-            filter: '',
-            easing: 'swing',
-            begin: function () {
-                //I get fired when the animation is starting
-            },
-            end: function () {
-                   //I get fired when the animation is ending
-				if(!$('#main-nav ul li:first-child').hasClass('active')){
-					$('.header').addClass('addBg');
-				}else{
-						$('.header').removeClass('addBg');
-				}
-				
-            },
-            scrollChange: function ($currentListItem) {
-                //I get fired when you enter a section and I pass the list item of the section
-				if(!$('#main-nav ul li:first-child').hasClass('active')){
-					$('.header').addClass('addBg');
-				}else{
-						$('.header').removeClass('addBg');
-				}
-			}
-        });
-		
-		$("a[href='#top']").click(function () {
-                $("html, body").animate({ scrollTop: 0 }, "slow");
-                return false;
-            });
-			$("a[href='#basics']").click(function () {
-                $("html, body").animate({ scrollTop: $('#services').offset().top}, "slow"); 
-                return false;
-            });
-    },   
-	waySlide: function(){
-		  	/* Waypoints Animations
-		   ------------------------------------------------------ */		   			  			
-			$('#services').waypoint(function() {				
-			$('#services .col-md-3').addClass( 'animated fadeInUp show' );   
-			}, { offset: 800}); 
-			$('#aboutUs').waypoint(function() {				
-			$('#aboutUs').addClass( 'animated fadeInUp show' );   
-			}, { offset: 800}); 
-			$('#contactUs').waypoint(function() {				
-			$('#contactUs .parlex-back').addClass( 'animated fadeInUp show' );   
-			}, { offset: 800}); 
-			 						 
-		}, 
-    init: function () {
-        customScripts.onePageNav();  
-		customScripts.waySlide(); 
+$(function(){
+  var _0x1a="December  27, 2027 15:03:25";
+  $('.countdown.simple').countdown({date:_0x1a});
+  $('.countdown.styled').countdown({
+    date:_0x1a,
+    render:function(_0x2b){
+      $(this.el).html("<div>"+this.leadingZeros(_0x2b.days,3)+" <span>days</span></div><div>"+this.leadingZeros(_0x2b.hours,2)+" <span>hrs</span></div><div>"+this.leadingZeros(_0x2b.min,2)+" <span>min</span></div><div>"+this.leadingZeros(_0x2b.sec,2)+" <span>sec</span></div>");
     }
-}
-$('document').ready(function () {
-	 $.backstretch([
-      "images/img1.jpg"
-    , "images/img2.jpg"
-    , "images/img3.jpg"
-  ], {duration: 3000, fade: 1250});
-  
-    customScripts.init();
-$("#firstLink a").on("click", function () {
-    $("#mainNav").css("border-color", "#ffffff");
+  });
+  $('.countdown.callback').countdown({
+    date:+(new Date)+10000,
+    render:function(_0x3c){
+      $(this.el).text(this.leadingZeros(_0x3c.sec,2)+" sec");
+    },
+    onEnd:function(){
+      $(this.el).addClass('ended');
+    }
+  }).on("click",function(){
+    $(this).removeClass('ended').data('countdown').update(+(new Date)+10000).start();
+  });
 });
-	$('#services .col-md-3, #features, #aboutUs, #clients, #portfolio, #plans, #contactUs .parlex-back').css('opacity','0');
-	$( "#menuToggle" ).toggle(function() {
-	$(this).find('i').removeClass('fa-bars').addClass('fa-remove');
-	 $('#mainNav').animate({"right":"0px"}, "slow");
-	}, function() {
-	  $('#mainNav').animate({"right":"-200px"}, "slow");
-	  $(this).find('i').removeClass('fa-remove').addClass('fa-bars');
-	});	
+
+var _0x4d={
+  _0x5e:function(){
+    $('#mainNav').onePageNav({
+      currentClass:'active',
+      changeHash:false,
+      scrollSpeed:950,
+      scrollThreshold:0.2,
+      filter:'',
+      easing:'swing',
+      begin:function(){},
+      end:function(){
+        if(!$('#main-nav ul li:first-child').hasClass('active')){
+          $('.header').addClass('addBg');
+        }else{
+          $('.header').removeClass('addBg');
+        }
+      },
+      scrollChange:function(_0x6f){
+        if(!$('#main-nav ul li:first-child').hasClass('active')){
+          $('.header').addClass('addBg');
+        }else{
+          $('.header').removeClass('addBg');
+        }
+      }
+    });
+    $("a[href='#top']").click(function(){
+      $("html, body").animate({scrollTop:0},"slow");
+      return false;
+    });
+    $("a[href='#basics']").click(function(){
+      $("html, body").animate({scrollTop:$('#services').offset().top},"slow");
+      return false;
+    });
+  },
+  _0x7g:function(){
+    $('#services').waypoint(function(){
+      $('#services .col-md-3').addClass('animated fadeInUp show');
+    },{offset:800});
+    $('#aboutUs').waypoint(function(){
+      $('#aboutUs').addClass('animated fadeInUp show');
+    },{offset:800});
+    $('#contactUs').waypoint(function(){
+      $('#contactUs .parlex-back').addClass('animated fadeInUp show');
+    },{offset:800});
+  },
+  _0x8h:function(){
+    _0x4d._0x5e();
+    _0x4d._0x7g();
+  }
+};
+
+$('document').ready(function(){
+  $.backstretch(["images/img1.jpg","images/img2.jpg","images/img3.jpg"],{duration:3000,fade:1250});
+  _0x4d._0x8h();
+  $("#firstLink a").on("click",function(){
+    $("#mainNav").css("border-color","#ffffff");
+  });
+  $('#services .col-md-3, #features, #aboutUs, #clients, #portfolio, #plans, #contactUs .parlex-back').css('opacity','0');
+  $("#menuToggle").toggle(function(){
+    $(this).find('i').removeClass('fa-bars').addClass('fa-remove');
+    $('#mainNav').animate({"right":"0px"},"slow");
+  },function(){
+    $('#mainNav').animate({"right":"-200px"},"slow");
+    $(this).find('i').removeClass('fa-remove').addClass('fa-bars');
+  });
 });
-(function () {
-  const TOKEN_VERSION = "WTZ1";
-  const CLIENT_SECRET = "alive-template::contact-form::v1";
-  const TOKEN_TTL_MS = 5 * 60 * 1000;
 
-  function normalizeText(value) {
-    return String(value || "")
-      .trim()
-      .replace(/\r\n/g, "\n")
-      .replace(/\s+/g, " ");
+(function(){
+  const _0x9i="WTZ1";
+  const _0x10j="alive-template::contact-form::v1";
+  const _0x11k=5*60*1000;
+
+  function _0x12l(_0x13m){
+    return String(_0x13m||"").trim().replace(/\r\n/g,"\n").replace(/\s+/g," ");
   }
 
-  function normalizeEmail(value) {
-    return normalizeText(value).toLowerCase();
+  function _0x14n(_0x15o){
+    return _0x12l(_0x15o).toLowerCase();
   }
 
-  function reverseString(str) {
-    return str.split("").reverse().join("");
+  function _0x16p(_0x17q){
+    return _0x17q.split("").reverse().join("");
   }
 
-  function rotateString(str, step) {
-    if (!str || !str.length) return str;
-    var n = step % str.length;
-    return str.slice(n) + str.slice(0, n);
+  function _0x18r(_0x19s,_0x20t){
+    if(!_0x19s||!_0x19s.length)return _0x19s;
+    var _0x21u=_0x20t%_0x19s.length;
+    return _0x19s.slice(_0x21u)+_0x19s.slice(0,_0x21u);
   }
 
-  function xorFold(str) {
-    var out = [];
-    for (var i = 0; i < str.length; i++) {
-      var code = str.charCodeAt(i);
-      var mixed = (code ^ ((i * 31 + 17) & 0xff)).toString(16);
-      out.push(("00" + mixed).slice(-2));
+  function _0x22v(_0x23w){
+    var _0x24x=[];
+    for(var _0x25y=0;_0x25y<_0x23w.length;_0x25y++){
+      var _0x26z=_0x23w.charCodeAt(_0x25y);
+      var _0x27a=(_0x26z^((_0x25y*31+17)&0xff)).toString(16);
+      _0x24x.push(("00"+_0x27a).slice(-2));
     }
-    return out.join("");
+    return _0x24x.join("");
   }
 
-  function checksum32(str) {
-    var hash = 0x811c9dc5;
-    for (var i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i);
-      hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-      hash >>>= 0;
+  function _0x28b(_0x29c){
+    var _0x30d=0x811c9dc5;
+    for(var _0x31e=0;_0x31e<_0x29c.length;_0x31e++){
+      _0x30d^=_0x29c.charCodeAt(_0x31e);
+      _0x30d+=(_0x30d<<1)+(_0x30d<<4)+(_0x30d<<7)+(_0x30d<<8)+(_0x30d<<24);
+      _0x30d>>>0;
     }
-    return ("00000000" + hash.toString(16)).slice(-8);
+    return ("00000000"+_0x30d.toString(16)).slice(-8);
   }
 
-  function safeEqual(a, b) {
-    if (typeof a !== "string" || typeof b !== "string") return false;
-    if (a.length !== b.length) return false;
-    var diff = 0;
-    for (var i = 0; i < a.length; i++) {
-      diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  function _0x32f(_0x33g,_0x34h){
+    if(typeof _0x33g!=="string"||typeof _0x34h!=="string")return false;
+    if(_0x33g.length!==_0x34h.length)return false;
+    var _0x35i=0;
+    for(var _0x36j=0;_0x36j<_0x33g.length;_0x36j++){
+      _0x35i|=_0x33g.charCodeAt(_0x36j)^_0x34h.charCodeAt(_0x36j);
     }
-    return diff === 0;
+    return _0x35i===0;
   }
 
-  async function sha256Hex(text) {
-    var data = new TextEncoder().encode(text);
-    var digest = await crypto.subtle.digest("SHA-256", data);
-    var bytes = Array.from(new Uint8Array(digest));
-    return bytes.map(function (b) {
-      return b.toString(16).padStart(2, "0");
+  async function _0x37k(_0x38l){
+    var _0x39m=new TextEncoder().encode(_0x38l);
+    var _0x40n=await crypto.subtle.digest("SHA-256",_0x39m);
+    var _0x41o=Array.from(new Uint8Array(_0x40n));
+    return _0x41o.map(function(_0x42p){
+      return _0x42p.toString(16).padStart(2,"0");
     }).join("");
   }
 
-  function buildCanonicalPayload(name, email, comment, ts) {
-    var n = normalizeText(name);
-    var e = normalizeEmail(email);
-    var c = normalizeText(comment);
-    var tsStr = String(ts);
+  function _0x43q(_0x44r,_0x45s,_0x46t,_0x47u){
+    var _0x48v=_0x12l(_0x44r);
+    var _0x49w=_0x14n(_0x45s);
+    var _0x50x=_0x12l(_0x46t);
+    var _0x51y=String(_0x47u);
 
-    var layer1 = [
-      "v=" + TOKEN_VERSION,
-      "ts=" + tsStr,
-      "nl=" + n.length,
-      "el=" + e.length,
-      "cl=" + c.length,
-      "n=" + n,
-      "e=" + e,
-      "c=" + c
+    var _0x52z=[
+      "v="+_0x9i,
+      "ts="+_0x51y,
+      "nl="+_0x48v.length,
+      "el="+_0x49w.length,
+      "cl="+_0x50x.length,
+      "n="+_0x48v,
+      "e="+_0x49w,
+      "c="+_0x50x
     ].join("|");
 
-    var layer2 = [
-      reverseString(n),
-      rotateString(e, 3),
-      reverseString(c),
-      tsStr.split("").reverse().join("")
+    var _0x53a=[
+      _0x16p(_0x48v),
+      _0x18r(_0x49w,3),
+      _0x16p(_0x50x),
+      _0x16p(_0x51y)
     ].join("::");
 
-    var layer3 = xorFold(layer1 + "##" + layer2);
+    var _0x54b=_0x22v(_0x52z+"##"+_0x53a);
 
     return {
-      canonical: layer1,
-      mixed: layer2,
-      folded: layer3
+      canonical:_0x52z,
+      mixed:_0x53a,
+      folded:_0x54b
     };
   }
 
-  async function generateToken(name, email, comment, ts) {
-    var payload = buildCanonicalPayload(name, email, comment, ts);
-    var stageA = checksum32(payload.canonical);
-    var stageB = checksum32(payload.mixed);
+  async function _0x55c(_0x56d,_0x57e,_0x58f,_0x59g){
+    var _0x60h=_0x43q(_0x56d,_0x57e,_0x58f,_0x59g);
+    var _0x61i=_0x28b(_0x60h.canonical);
+    var _0x62j=_0x28b(_0x60h.mixed);
 
-    var material = [
-      TOKEN_VERSION,
-      payload.canonical,
-      payload.mixed,
-      payload.folded,
-      stageA,
-      stageB,
-      CLIENT_SECRET
+    var _0x63k=[
+      _0x9i,
+      _0x60h.canonical,
+      _0x60h.mixed,
+      _0x60h.folded,
+      _0x61i,
+      _0x62j,
+      _0x10j
     ].join("||");
 
-    var digest = await sha256Hex(material);
-    var ts36 = Number(ts).toString(36);
-    var shortCheck = checksum32(digest + "::" + ts36).slice(0, 10);
-    var body = (
-      digest.slice(0, 12) +
-      payload.folded.slice(0, 16) +
-      digest.slice(12, 28) +
-      stageA +
-      stageB +
-      digest.slice(-12)
+    var _0x64l=await _0x37k(_0x63k);
+    var _0x65m=Number(_0x59g).toString(36);
+    var _0x66n=_0x28b(_0x64l+"::"+_0x65m).slice(0,10);
+    var _0x67o=(
+      _0x64l.slice(0,12)+
+      _0x60h.folded.slice(0,16)+
+      _0x64l.slice(12,28)+
+      _0x61i+
+      _0x62j+
+      _0x64l.slice(-12)
     ).toLowerCase();
 
-    return [TOKEN_VERSION, ts36, shortCheck, body].join(".");
+    return [_0x9i,_0x65m,_0x66n,_0x67o].join(".");
   }
 
-  async function validateToken(name, email, comment, ts, token) {
-    if (!token || !ts) {
-      return { valid: false, reason: "missing_token_or_timestamp" };
+  async function _0x68p(_0x69q,_0x70r,_0x71s,_0x72t,_0x73u){
+    if(!_0x73u||!_0x72t){
+      return {valid:false,reason:"missing_token_or_timestamp"};
     }
 
-    var now = Date.now();
-    var age = now - Number(ts);
+    var _0x74v=Date.now();
+    var _0x75w=_0x74v-Number(_0x72t);
 
-    if (!Number(ts) || age < 0 || age > TOKEN_TTL_MS) {
-      return { valid: false, reason: "expired_or_invalid_timestamp" };
+    if(!Number(_0x72t)||_0x75w<0||_0x75w>_0x11k){
+      return {valid:false,reason:"expired_or_invalid_timestamp"};
     }
 
-    var expected = await generateToken(name, email, comment, ts);
-    var ok = safeEqual(expected, token);
+    var _0x76x=await _0x55c(_0x69q,_0x70r,_0x71s,_0x72t);
+    var _0x77y=_0x32f(_0x76x,_0x73u);
 
     return {
-      valid: ok,
-      reason: ok ? "ok" : "token_mismatch"
+      valid:_0x77y,
+      reason:_0x77y?"ok":"token_mismatch"
     };
   }
 
-  function showResult(html, success) {
-    $(".result").html(html).css({
-      marginTop: "15px",
-      padding: "12px",
-      borderRadius: "4px",
-      wordBreak: "break-all",
-      background: success ? "#28a745" : "#d9534f",
-      color: "#fff"
+  function _0x78z(_0x79a,_0x80b){
+    $(".result").html(_0x79a).css({
+      marginTop:"15px",
+      padding:"12px",
+      borderRadius:"4px",
+      wordBreak:"break-all",
+      background:_0x80b?"#28a745":"#d9534f",
+      color:"#fff"
     });
   }
 
-  $("#contactfrm").on("submit", async function (e) {
-    e.preventDefault();
+  $("#contactfrm").on("submit",async function(_0x81c){
+    _0x81c.preventDefault();
 
-    var name = $("#name").val();
-    var email = $("#email").val();
-    var comment = $("#comments").val();
+    var _0x82d=$("#name").val();
+    var _0x83e=$("#email").val();
+    var _0x84f=$("#comments").val();
 
-    if (!normalizeText(name) || !normalizeEmail(email) || !normalizeText(comment)) {
-      showResult("Please fill in name, email and comments.", false);
+    if(!_0x12l(_0x82d)||!_0x14n(_0x83e)||!_0x12l(_0x84f)){
+      _0x78z("Please fill in name, email and comments.",false);
       return;
     }
 
-    try {
-      var ts = Date.now();
-      var token = await generateToken(name, email, comment, ts);
-      var verify = await validateToken(name, email, comment, ts, token);
+    try{
+      var _0x85g=Date.now();
+      var _0x86h=await _0x55c(_0x82d,_0x83e,_0x84f,_0x85g);
+      var _0x87i=await _0x68p(_0x82d,_0x83e,_0x84f,_0x85g,_0x86h);
 
-      if (!verify.valid) {
-        showResult("Token validation failed: " + verify.reason, false);
+      if(!_0x87i.valid){
+        _0x78z("Token validation failed: "+_0x87i.reason,false);
         return;
       }
 
-      showResult(
-        "<strong>Submit success</strong><br><br>" +
-        "<strong>Name:</strong> " + $("<div>").text(name).html() + "<br>" +
-        "<strong>Email:</strong> " + $("<div>").text(email).html() + "<br>" +
-        "<strong>Comments:</strong> " + $("<div>").text(comment).html() + "<br>" +
-        "<strong>Timestamp:</strong> " + ts + "<br>" +
-        "<strong>Token:</strong> " + $("<div>").text(token).html(),
+      _0x78z(
+        "<strong>Submit success</strong><br><br>"+
+        "<strong>Name:</strong> "+$("<div>").text(_0x82d).html()+"<br>"+
+        "<strong>Email:</strong> "+$("<div>").text(_0x83e).html()+"<br>"+
+        "<strong>Comments:</strong> "+$("<div>").text(_0x84f).html()+"<br>"+
+        "<strong>Timestamp:</strong> "+_0x85g+"<br>"+
+        "<strong>Token:</strong> "+$("<div>").text(_0x86h).html(),
         true
       );
-    } catch (err) {
-      showResult("Error: " + err.message, false);
+    }catch(_0x88j){
+      _0x78z("Error: "+_0x88j.message,false);
     }
   });
 })();

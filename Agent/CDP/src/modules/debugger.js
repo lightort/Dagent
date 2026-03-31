@@ -18,6 +18,8 @@ class Debugger {
     this._originalLineNumber = 0; // 存储原始0基行号用于位置映射
     this._networkRequests = new Map(); // 存储网络请求信息
     this._enabledDomains = new Set(); // 跟踪已启用的域
+    this._scriptIdToUrl = new Map(); // 存储scriptId到URL的映射
+    this._scriptUrlToId = new Map(); // 存储URL到scriptId的映射
   }
   
   /**
@@ -81,6 +83,10 @@ class Debugger {
     try {
       this.client = await this.connectionManager.connect();
       
+      // 先注册scriptParsed事件监听器，确保能捕获所有脚本加载事件
+      // 这必须在启用Debugger域之前完成，因为启用域时会触发所有已加载脚本的scriptParsed事件
+      this._setupScriptParsedListener();
+      
       // 确保所需域已启用
       await this.connectionManager.enableDomains(['Debugger', 'Network']);
       this._enabledDomains.add('Debugger');
@@ -102,7 +108,7 @@ class Debugger {
       // 初始化断点持久化存储
       await this._initBreakpointStorage();
       
-      // 注册断点事件监听器
+      // 注册其他断点事件监听器
       this.setupEventListeners();
       
       console.log('调试器已初始化');
@@ -110,6 +116,22 @@ class Debugger {
       console.error('初始化调试器失败:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * 设置scriptParsed事件监听器
+   * 单独设置以确保在启用Debugger域之前完成注册
+   * @private
+   */
+  _setupScriptParsedListener() {
+    // 注册scriptParsed事件监听器来收集脚本信息
+    this.connectionManager.on('Debugger.scriptParsed', (event) => {
+      // 维护scriptId到URL的映射
+      if (event.scriptId && event.url) {
+        this._scriptIdToUrl.set(event.scriptId, event.url);
+        this._scriptUrlToId.set(event.url, event.scriptId);
+      }
+    });
   }
 
   /**
@@ -127,26 +149,28 @@ class Debugger {
       // 尝试读取已保存的断点
       if (fs.existsSync(this.breakpointStoragePath)) {
         const savedBreakpoints = JSON.parse(fs.readFileSync(this.breakpointStoragePath, 'utf8'));
-        
-        // 恢复所有类型的有效断点
-        let restoredCount = 0;
-        savedBreakpoints.forEach(bp => {
-          if (bp.id) { // 确保是有效的断点
-            this.breakpoints.set(bp.id, bp);
-            restoredCount++;
-          }
-        });
-        
-        // 尝试重新激活所有恢复的断点
-        if (restoredCount > 0 && this.client) {
-          // 重新设置所有恢复的断点到Chrome中
-          for (const bp of this.breakpoints.values()) {
+
+        // 只恢复“有效的断点定义”，不要先塞进 this.breakpoints，
+        // 否则 setBreakpoint() 的重复断点检测会把它当作“已存在”，从而导致 Chrome 实际未下发断点。
+        const validBreakpoints = Array.isArray(savedBreakpoints)
+          ? savedBreakpoints.filter(bp => bp && bp.url && typeof bp.lineNumber === 'number')
+          : [];
+
+        if (validBreakpoints.length > 0 && this.client) {
+          // 清空内存断点，避免 setBreakpoint() 的重复检测误伤恢复流程
+          this.breakpoints.clear();
+
+          for (const bp of validBreakpoints) {
             try {
-              // 重新设置断点，使用原始的URL、行号和选项
-              const newBpId = await this.setBreakpoint(bp.url, bp.lineNumber, bp.options);
+              // 注意：这里直接使用 bp.url，因为 setBreakpoint() 会内部做脚本 URL 匹配
+              const newBpId = await this.setBreakpoint(bp.url, bp.lineNumber, bp.options || {});
+              if (newBpId) {
+                console.log(`✅ 恢复断点: ${bp.url}:${bp.lineNumber}`);
+              } else {
+                console.log(`⚠️  断点未下发或已存在: ${bp.url}:${bp.lineNumber}`);
+              }
             } catch (error) {
-              // 如果重新设置失败，从内存中移除该断点
-              this.breakpoints.delete(bp.id);
+              console.error(`❌ 恢复断点失败: ${bp.url}:${bp.lineNumber} - ${error.message}`);
             }
           }
         }
@@ -209,8 +233,12 @@ class Debugger {
             // 确定URL，尝试多种方式
             let url = frame.url || location.url;
             
-            // 如果没有URL但有scriptId，尝试获取脚本信息
-            if (!url && scriptId) {
+            // 优先使用scriptId从映射中查找URL，即使frame.url已经有值
+            // 这样可以确保使用正确的URL，避免CDP返回错误的URL
+            if (scriptId && this._scriptIdToUrl.has(scriptId)) {
+              url = this._scriptIdToUrl.get(scriptId);
+            } else if (!url && scriptId) {
+              // 如果映射中没有且没有URL，使用scriptId作为占位符
               url = `script:${scriptId}`;
               // 对于已知的HTML页面内联脚本，使用更友好的显示
               if (this._currentPageUrl && this._currentPageUrl.includes('demo-page.html')) {
@@ -273,14 +301,14 @@ class Debugger {
           originalEvent: { 
             reason: event.reason,
             hitBreakpoints: event.hitBreakpoints,
-            hasCallFrames: !!callFrames.length
+            hasCallFrames: !!callFrames.length,
+            callFrames: callFrames
           }
         };
         
         // 更新暂停状态和调用栈信息
         this._isPaused = true;
         this._callFrames = event.callFrames || [];
-        this._pauseEvent = event;
         
         // 查找断点在格式化代码中的位置
         let formattedPosition = null;
@@ -387,6 +415,9 @@ class Debugger {
           formattedColumn: 0
         };
         
+        // 保存包含格式化位置信息的pauseInfo，供getCurrentCodeContext使用
+        this._pauseEvent = pauseInfo;
+        
         // 触发自定义断点命中事件
         this._emit('breakpointHit', pauseInfo);
       } catch (error) {
@@ -434,13 +465,8 @@ class Debugger {
     // 使用connectionManager注册事件监听器
     this.connectionManager.on('Debugger.resumed', handleResumed);
     
-    // 添加调试状态事件
-    this.connectionManager.on('Debugger.scriptParsed', (event) => {
-      // 仅在调试模式下打印，避免过多日志
-      if (process.env.DEBUG) {
-        console.debug(`📄 脚本已加载: ${event.url || 'unknown'}`);
-      }
-    });
+    // 注意：scriptParsed事件监听器已在_setupScriptParsedListener中注册
+    // 这里不需要重复注册
 
     // 网络请求事件监听器
     this.connectionManager.on('Network.requestWillBeSent', (event) => {
@@ -560,10 +586,15 @@ class Debugger {
           }
         }
       
-      // 检查是否已经存在相同的断点
+      // 检查是否已经存在相同的断点（考虑列号）
       let existingBreakpoint = null;
       for (const bp of this.breakpoints.values()) {
-        if (bp.url === targetUrl && bp.lineNumber === lineNumber) {
+        // 使用更宽松的匹配方式，基于文件名和行号/列号
+        const bpFilename = bp.url.split('/').pop();
+        const targetFilename = targetUrl.split('/').pop();
+        
+        if (bpFilename === targetFilename && bp.lineNumber === lineNumber && 
+            bp.options?.columnNumber === options.columnNumber) {
           existingBreakpoint = bp;
           break;
         }
@@ -571,6 +602,7 @@ class Debugger {
       
       // 如果存在相同的断点，返回null表示重复断点
       if (existingBreakpoint) {
+        console.log(`⚠️  断点已存在: ${targetUrl}:${lineNumber}:${options.columnNumber}`);
         return null;
       }
       
@@ -619,7 +651,7 @@ class Debugger {
                 if (scripts.length > 0) {
                   console.log('[CDP Debugger] 找到目标脚本，尝试设置断点...');
                   // 这里我们无法直接设置真正的调试断点，但可以添加日志输出
-                  console.log('[CDP Debugger] 断点位置：${url} 第 ${lineNumber} 行');
+                  console.log('[CDP Debugger] 断点位置：${url} 第 ${lineNumber} 行，第 ${options.columnNumber || 0} 列');
                   return true;
                 }
                 return false;
@@ -635,7 +667,7 @@ class Debugger {
             console.log(`   注意：此替代方法可能无法提供完整的调试功能`);
             
             // 由于无法获取真正的断点ID，我们生成一个临时ID
-            const tempBreakpointId = `temp-${Date.now()}`;
+            const tempBreakpointId = `temp-${Date.now()}-${options.columnNumber || 0}`;
             
             // 保存断点信息（标记为临时断点）
             const breakpointInfo = {
@@ -743,7 +775,7 @@ class Debugger {
    * @param {number} frameIndex - 调用栈帧索引，默认为0（当前帧）
    * @returns {Promise<Object>} 代码上下文信息
    */
-  async getCurrentCodeContext(contextLines = 30, frameIndex = 0, format = true) {
+  async getCurrentCodeContext(contextLines = 5, frameIndex = 0, format = false) {
     try {
       // 检查是否处于暂停状态
       if (!this._isPaused || !this._callFrames || this._callFrames.length === 0) {
@@ -756,71 +788,109 @@ class Debugger {
       }
 
       const currentFrame = this._callFrames[frameIndex];
-      const scriptId = currentFrame.location.scriptId;
-      const lineNumber = currentFrame.location.lineNumber; // CDP使用0基行号
-      const columnNumber = currentFrame.location.columnNumber || 0; // 0基列号
+      const scriptId = currentFrame.location?.scriptId || currentFrame.scriptId;
       const url = currentFrame.url;
+      let lineNumber = currentFrame.lineNumber !== undefined ? currentFrame.lineNumber : (currentFrame.location?.lineNumber || 0); // CDP使用0基行号
+      let columnNumber = currentFrame.columnNumber !== undefined ? currentFrame.columnNumber : (currentFrame.location?.columnNumber || 0); // 0基列号
+
+      console.log(`获取帧 ${frameIndex} 的代码上下文: ${url} 行${lineNumber + 1}, 列${columnNumber + 1}`);
 
       // 获取脚本源代码
       const result = await this.connectionManager.execute('Debugger', 'getScriptSource', {
         scriptId
       });
 
-      let sourceCode = result.scriptSource;
+      const sourceCode = result.scriptSource;
+      const isFormatted = false;
 
-      // 如果需要格式化，使用fileViewer进行格式化
-      if (format && this.fileViewer) {
-        try {
-          // 判断代码类型
-          let language = 'js';
-          if (url.endsWith('.css')) {
-            language = 'css';
-          } else if (url.endsWith('.html') || url.endsWith('.htm')) {
-            language = 'html';
-          }
-
-          const formatResult = await this.fileViewer.formatContent(sourceCode, language);
-          sourceCode = formatResult.content;
-        } catch (error) {
-          console.warn('代码格式化失败，使用原始代码:', error.message);
-        }
-      }
-
+      // 提取断点附近的代码片段，无论是否是压缩代码，都输出断点位置附近的1000字符代码
+      let context = [];
+      
+      // 计算断点在整个源代码中的位置
+      let totalPosition = 0;
       const lines = sourceCode.split('\n');
-
-      // 提取上下文代码
-      const context = [];
-
-      // 处理多行文件的情况（即使原始是单行，格式化后也会变成多行）
-      const startLine = Math.max(0, lineNumber - contextLines);
-      const endLine = Math.min(lines.length - 1, lineNumber + contextLines);
-
-      for (let i = startLine; i <= endLine; i++) {
-        const lineItem = {
-          line: i + 1, // 转换为1基行号
-          content: lines[i] || '',
-          isCurrent: i === lineNumber
-        };
-        
-        // 为当前行添加列号信息
-        if (i === lineNumber) {
-          lineItem.columnNumber = columnNumber;
-        }
-        
-        context.push(lineItem);
+      
+      // 计算断点在整个源代码中的总位置
+      for (let i = 0; i < lineNumber; i++) {
+        totalPosition += lines[i].length + 1; // +1 是因为换行符
       }
+      totalPosition += columnNumber;
+      
+      // 提取断点位置附近的1250字符代码，上文500字符，下文750字符
+      const startPos = Math.max(0, totalPosition - 500);
+      const endPos = Math.min(sourceCode.length, totalPosition + 750);
+      const codeSnippet = sourceCode.substring(startPos, endPos);
+      
+      // 移除回车和空格，避免输出过长
+      const cleanedSnippet = codeSnippet.replace(/\s+/g, ' ').trim();
+      
+      // 计算断点在提取的代码片段中的位置
+      const snippetPosition = totalPosition - startPos;
+      
+      // 在中断位置打上标记
+      const markedContent = cleanedSnippet.substring(0, snippetPosition) + '▼' + cleanedSnippet.substring(snippetPosition);
+      
+      // 构建上下文数组，只包含一行代码
+      const lineItem = {
+        line: lineNumber + 1, // 显示实际行号
+        content: markedContent, // 带有中断位置标记的代码
+        isCurrent: true, // 断点位置
+        columnNumber: columnNumber // 显示实际列号
+      };
+      context.push(lineItem);
 
       return {
         url,
         lineNumber: lineNumber + 1, // 转换为1基行号
         columnNumber: columnNumber + 1, // 转换为1基列号
         contextLines: context,
-        totalLines: lines.length,
-        formatted: format
+        totalLines: context.length, // 显示上下文行数
+        formatted: isFormatted,
+        functionName: currentFrame.functionName || '(匿名函数)' // 添加函数名信息
       };
     } catch (error) {
       console.error('获取代码上下文失败:', error.message);
       throw error;
+    }
+  }
+
+  /**
+   * 提取断点附近的代码片段
+   * @param {string} sourceCode - 源代码
+   * @param {number} lineNumber - 行号（0基）
+   * @param {number} columnNumber - 列号（0基）
+   * @returns {string} 代码片段
+   */
+  extractCodeSnippet(sourceCode, lineNumber, columnNumber) {
+    const lines = sourceCode.split('\n');
+    
+    // 对于多行代码，提取断点行及其周围的行
+    if (lines.length > 1) {
+      const startLine = Math.max(0, lineNumber - 15);
+      const endLine = Math.min(lines.length - 1, lineNumber + 15);
+      return lines.slice(startLine, endLine + 1).join('\n');
+    } else {
+      // 对于压缩代码，所有代码都在一行中
+      // 从更早的位置开始提取，确保能看到断点位置之前的代码
+      const line = lines[0];
+      if (!line) {
+        return sourceCode;
+      }
+      
+      // 对于压缩代码，我们需要提取更大范围的代码，以确保能够捕获到完整的函数定义
+      // 特别是对于webpack打包的代码，函数可能很长
+      // 确保列号是有效的数字
+      const safeColumnNumber = parseInt(columnNumber) || 0;
+      
+      // 提取断点位置附近的代码，确保显示的是实际断点位置的代码
+      // 扩大提取范围，确保能够捕获到完整的函数定义
+      const startPos = Math.max(0, safeColumnNumber - 1500);
+      const endPos = Math.min(line.length, safeColumnNumber + 1500);
+      
+      // 提取代码片段
+      const snippet = line.substring(startPos, endPos);
+
+      return snippet;
     }
   }
 
@@ -1352,8 +1422,12 @@ class Debugger {
       // 确定URL，尝试多种方式（与handlePaused相同的逻辑）
       let url = callFrame.url || location.url;
       
-      // 如果没有URL但有scriptId，尝试获取脚本信息
-      if (!url && scriptId) {
+      // 优先使用scriptId从映射中查找URL，即使callFrame.url已经有值
+      // 这样可以确保使用正确的URL，避免CDP返回错误的URL
+      if (scriptId && this._scriptIdToUrl.has(scriptId)) {
+        url = this._scriptIdToUrl.get(scriptId);
+      } else if (!url && scriptId) {
+        // 如果映射中没有且没有URL，使用scriptId作为占位符
         url = `script:${scriptId}`;
         // 对于已知的HTML页面内联脚本，使用更友好的显示
         if (this._currentPageUrl && this._currentPageUrl.includes('demo-page.html')) {
@@ -1982,7 +2056,7 @@ class Debugger {
             return 'already_installed';
           }
 
-          const clickHandler = function(event) {
+          window.__cdpClickHandler = function(event) {
             const target = event.target;
             const tagName = target.tagName;
             const id = target.id || '';
@@ -2001,7 +2075,7 @@ class Debugger {
             debugger;
           };
 
-          document.addEventListener('click', clickHandler, true);
+          document.addEventListener('click', window.__cdpClickHandler, true);
           window.__cdpClickListenerInstalled = true;
 
           return 'installed';
@@ -2100,6 +2174,342 @@ class Debugger {
     } catch (error) {
       console.error('❌ 检查点击事件监听状态失败:', error.message);
       return false;
+    }
+  }
+
+  /**
+   * 根据scriptId获取URL
+   * 如果本地映射中没有，会尝试从CDP获取
+   * @param {string} scriptId - 脚本ID
+   * @returns {Promise<string|null>} 脚本URL或null
+   */
+  async getUrlByScriptId(scriptId) {
+    // 首先检查本地映射
+    if (this._scriptIdToUrl.has(scriptId)) {
+      return this._scriptIdToUrl.get(scriptId);
+    }
+
+    // 如果本地没有，尝试从CDP获取所有脚本信息
+    try {
+      const scripts = await this.connectionManager.getScripts();
+      if (scripts && scripts.length > 0) {
+        // 更新映射
+        for (const script of scripts) {
+          if (script.scriptId && script.url) {
+            this._scriptIdToUrl.set(script.scriptId, script.url);
+            this._scriptUrlToId.set(script.url, script.scriptId);
+          }
+        }
+
+        // 再次检查映射
+        if (this._scriptIdToUrl.has(scriptId)) {
+          return this._scriptIdToUrl.get(scriptId);
+        }
+      }
+    } catch (error) {
+      console.warn(`获取脚本信息失败: ${error.message}`);
+    }
+
+    return null;
+  }
+
+  /**
+   * 获取所有已加载的脚本信息
+   * @returns {Promise<Map>} scriptId到URL的映射
+   */
+  async getScriptMappings() {
+    // 尝试从CDP获取最新的脚本信息
+    try {
+      const scripts = await this.connectionManager.getScripts();
+      if (scripts && scripts.length > 0) {
+        // 更新映射
+        for (const script of scripts) {
+          if (script.scriptId && script.url) {
+            this._scriptIdToUrl.set(script.scriptId, script.url);
+            this._scriptUrlToId.set(script.url, script.scriptId);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`获取脚本映射失败: ${error.message}`);
+    }
+
+    return this._scriptIdToUrl;
+  }
+
+  /**
+   * 解析调用栈中的scriptId为实际URL
+   * 用于click.js和breakpoint.js中显示调用栈
+   * @param {Array} callFrames - 调用栈帧数组
+   * @returns {Promise<Array>} 处理后的调用栈帧数组
+   */
+  async resolveCallStackUrls(callFrames) {
+    if (!callFrames || callFrames.length === 0) {
+      return callFrames;
+    }
+
+    // 尝试使用Runtime.evaluate获取更准确的调用栈信息
+    try {
+      const client = await this.connectionManager.connect();
+      
+      // 执行JavaScript代码获取当前调用栈
+      const expression = `
+        (function() {
+          try {
+            throw new Error();
+          } catch (e) {
+            return e.stack;
+          }
+        })()
+      `;
+      
+      const { result } = await client.Runtime.evaluate({
+        expression: expression,
+        returnByValue: true
+      });
+      
+      if (result.value) {
+        // 解析浏览器返回的调用栈
+        const browserStackFrames = this._parseBrowserStack(result.value);
+        if (browserStackFrames && browserStackFrames.length > 0) {
+          // 过滤掉我们注入的匿名函数，只保留原始调用栈
+          const filteredFrames = browserStackFrames.filter(frame => {
+            return frame.url !== 'unknown' && !frame.url.includes('<anonymous>');
+          });
+          if (filteredFrames.length > 0) {
+            return filteredFrames;
+          }
+        }
+      }
+    } catch (error) {
+      // 静默失败，继续使用CDP提供的调用栈
+    }
+
+    // 收集所有需要解析的scriptId
+    const scriptIdsToResolve = [];
+    for (const frame of callFrames) {
+      const scriptId = frame.scriptId || frame.location?.scriptId;
+      const url = frame.url;
+      if (scriptId && (!url || url === 'unknown' || url.startsWith('script:')) && !this._scriptIdToUrl.has(scriptId)) {
+        scriptIdsToResolve.push(scriptId);
+      }
+    }
+
+    // 如果有未解析的scriptId，尝试通过CDP获取脚本信息
+    if (scriptIdsToResolve.length > 0) {
+      try {
+        await this._fetchMissingScriptUrls(scriptIdsToResolve);
+      } catch (error) {
+        // 静默失败，继续使用已有的映射
+      }
+    }
+
+    // 处理每个调用栈帧
+    return callFrames.map(frame => {
+      const scriptId = frame.scriptId || frame.location?.scriptId;
+      let url = frame.url;
+
+      // 优先使用scriptId从映射中查找URL，即使frame.url已经有值
+      // 这样可以确保使用正确的URL，避免CDP返回错误的URL
+      if (scriptId && this._scriptIdToUrl.has(scriptId)) {
+        url = this._scriptIdToUrl.get(scriptId);
+      } else if ((!url || url === 'unknown' || url.startsWith('script:')) && scriptId) {
+        // 如果映射中没有，使用scriptId作为占位符
+        url = `script:${scriptId}`;
+      }
+
+      return {
+        ...frame,
+        url: url || 'unknown'
+      };
+    });
+  }
+
+  /**
+   * 解析浏览器返回的调用栈字符串
+   * @private
+   * @param {string} stackString - 浏览器返回的调用栈字符串
+   * @returns {Array} 解析后的调用栈帧数组
+   */
+  _parseBrowserStack(stackString) {
+    if (!stackString) {
+      return [];
+    }
+
+    const lines = stackString.split('\n');
+    const frames = [];
+
+    // 跳过第一行（Error: 消息）
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // 使用更简单的方法解析调用栈行
+      // 格式：at functionName (url:line:column) 或 at functionName (`url:line:column`)
+      if (line.startsWith('at ')) {
+        const content = line.substring(3).trim();
+        
+        // 查找括号中的内容
+        const parenMatch = content.match(/\(([^)]+)\)$/);
+        if (parenMatch) {
+          // 有函数名和括号
+          const functionName = content.substring(0, content.indexOf('(')).trim() || '(匿名函数)';
+          const locationStr = parenMatch[1].replace(/`/g, ''); // 移除反引号
+          
+          // 解析位置信息 (url:line:column)
+          const lastColon = locationStr.lastIndexOf(':');
+          const secondLastColon = locationStr.lastIndexOf(':', lastColon - 1);
+          
+          if (lastColon !== -1 && secondLastColon !== -1) {
+            const url = locationStr.substring(0, secondLastColon);
+            const lineNumber = parseInt(locationStr.substring(secondLastColon + 1, lastColon)) - 1;
+            const columnNumber = parseInt(locationStr.substring(lastColon + 1)) - 1;
+            
+            // 从URL中提取文件名
+            const fileName = url.split('/').pop();
+            
+            frames.push({
+              functionName: functionName,
+              url: fileName,
+              lineNumber: lineNumber,
+              columnNumber: columnNumber,
+              scriptId: null
+            });
+          }
+        } else {
+          // 没有括号，只有URL
+          const locationStr = content.replace(/`/g, '');
+          const lastColon = locationStr.lastIndexOf(':');
+          const secondLastColon = locationStr.lastIndexOf(':', lastColon - 1);
+          
+          if (lastColon !== -1 && secondLastColon !== -1) {
+            const url = locationStr.substring(0, secondLastColon);
+            const lineNumber = parseInt(locationStr.substring(secondLastColon + 1, lastColon)) - 1;
+            const columnNumber = parseInt(locationStr.substring(lastColon + 1)) - 1;
+            
+            const fileName = url.split('/').pop();
+            
+            frames.push({
+              functionName: '(匿名函数)',
+              url: fileName,
+              lineNumber: lineNumber,
+              columnNumber: columnNumber,
+              scriptId: null
+            });
+          }
+        }
+      }
+    }
+
+    return frames;
+  }
+
+
+
+  /**
+   * 通过CDP获取缺失的脚本URL
+   * 尝试使用多种方法获取脚本信息
+   * @private
+   * @param {Array<string>} scriptIds - 需要解析的scriptId数组
+   */
+  async _fetchMissingScriptUrls(scriptIds) {
+    try {
+      const client = await this.connectionManager.connect();
+
+      // 方法1: 尝试使用 Debugger.getScriptSources (较新的CDP版本)
+      try {
+        const { scripts } = await client.Debugger.getScriptSources();
+        for (const script of scripts) {
+          if (script.scriptId && script.url) {
+            this._scriptIdToUrl.set(script.scriptId, script.url);
+            this._scriptUrlToId.set(script.url, script.scriptId);
+          }
+        }
+      } catch (error) {
+        // 静默失败，尝试其他方法
+      }
+      
+      // 方法2: 尝试使用 Debugger.getScripts (较旧的CDP版本)
+      try {
+        const { scripts } = await client.Debugger.getScripts();
+        for (const script of scripts) {
+          if (script.scriptId && script.url) {
+            this._scriptIdToUrl.set(script.scriptId, script.url);
+            this._scriptUrlToId.set(script.url, script.scriptId);
+          }
+        }
+      } catch (error) {
+        // 静默失败，尝试其他方法
+      }
+
+      // 方法3: 尝试使用 Debugger.getScriptSource 获取脚本源代码，从源代码中提取URL
+      for (const scriptId of scriptIds) {
+        try {
+          const result = await client.Debugger.getScriptSource({ scriptId });
+          if (result && result.scriptSource) {
+            // 尝试从源代码中提取URL信息
+            const sourceMapMatch = result.scriptSource.match(/sourceMappingURL=([^\s]+)/);
+            if (sourceMapMatch) {
+              const sourceMapUrl = sourceMapMatch[1];
+              // 尝试从sourceMapUrl中提取原始文件名
+              const fileNameMatch = sourceMapUrl.match(/([^/]+)\.map$/);
+              if (fileNameMatch) {
+                const fileName = fileNameMatch[1] + '.js';
+                // 构建完整的URL
+                const baseUrl = 'https://yngwypt.zmnyjk.com/js/';
+                const fullUrl = baseUrl + fileName;
+                this._scriptIdToUrl.set(scriptId, fullUrl);
+                this._scriptUrlToId.set(fullUrl, scriptId);
+              }
+            }
+          }
+        } catch (e) {
+          // 忽略错误，尝试下一个方法
+        }
+      }
+
+      // 方法4: 使用 Runtime.evaluate 获取页面中所有脚本的src属性
+      // 这可以帮助我们建立URL到scriptId的映射
+      try {
+        const expression = `
+          (function() {
+            const scripts = document.querySelectorAll('script[src]');
+            const result = [];
+            for (let i = 0; i < scripts.length; i++) {
+              const script = scripts[i];
+              if (script.src) {
+                result.push({
+                  index: i,
+                  url: script.src
+                });
+              }
+            }
+            return result;
+          })()
+        `;
+
+        const { result } = await client.Runtime.evaluate({
+          expression: expression,
+          returnByValue: true
+        });
+
+        if (result.value && Array.isArray(result.value)) {
+          // 尝试匹配scriptId和URL
+          // 注意：这种方法不完美，因为scriptId和DOM中的顺序可能不一致
+          for (let i = 0; i < result.value.length && i < scriptIds.length; i++) {
+            const scriptInfo = result.value[i];
+            const scriptId = scriptIds[i];
+            if (scriptInfo.url && scriptId) {
+              this._scriptIdToUrl.set(scriptId, scriptInfo.url);
+              this._scriptUrlToId.set(scriptInfo.url, scriptId);
+            }
+          }
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    } catch (error) {
+      // 静默失败
     }
   }
 }

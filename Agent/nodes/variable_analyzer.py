@@ -6,7 +6,7 @@ import time
 import re
 
 
-def analyze_with_llm(code_context: str, var_context: str, target_pattern: str, action_history: list) -> Dict[str, Any]:
+def analyze_with_llm(code_context: str, var_context: str, target_pattern: str, action_history: list, user_request: str) -> Dict[str, Any]:
     """
     使用LLM分析上下文，决策下一步操作
     
@@ -15,6 +15,7 @@ def analyze_with_llm(code_context: str, var_context: str, target_pattern: str, a
         var_context: 变量上下文
         target_pattern: 目标Token的模式描述
         action_history: 已执行的操作历史
+        user_request: 完整的用户请求描述
     
     Returns:
         分析结果，包含决策的下一步操作
@@ -23,7 +24,10 @@ def analyze_with_llm(code_context: str, var_context: str, target_pattern: str, a
         history_str = "\n".join([f"{i+1}. {h['action']}: {h.get('result', {}).get('message', '执行完成')}" 
                                 for i, h in enumerate(action_history[-5:])])  # 只显示最近5次操作
         
-        prompt = f"""你是一个代码分析专家，正在调试JavaScript代码以找出Token的生成位置。
+        prompt = f"""你是一个代码分析专家，正在根据用户的完整任务描述来定位Token的生成位置。
+
+完整任务描述:
+{user_request}
 
 目标Token特征: {target_pattern}
 
@@ -53,10 +57,16 @@ def analyze_with_llm(code_context: str, var_context: str, target_pattern: str, a
 3. 下一步应该执行哪个命令？（code/var/out/next/stop）
 
 重要提示:
-- 你需要在代码中寻找Token的生成逻辑（如字符串拼接、hash计算、加密等）
+- 请仔细分析完整任务描述，理解用户想要定位的具体函数
+- 你需要在代码中寻找Token的生成逻辑（如字符串拼接、hash计算、加密算法、编码转换等）
 - 如果当前代码中没有Token生成逻辑，使用out命令跳出当前函数继续查找
 - 如果看到疑似Token生成的代码，使用code命令仔细查看上下文
 - 如果看到Token相关的变量，使用var命令查看变量值
+- 注意识别不同类型的Token：
+  * 多段由点号分隔的字符串（如WTZ1.mmy9jbeq.9ddda7c9...）
+  * 长字符串，可能是加密或哈希结果（如04d635d2ccea813cf9f7645cbd974dcb...）
+- 注意查找与用户描述相关的加密逻辑，如用户名、密码的加密处理
+- 确保定位到的函数确实是生成目标Token的函数，而不是中间过程
 
 请以JSON格式返回:
 {{
@@ -121,11 +131,20 @@ def variable_analyzer_node(state: AgentState) -> AgentState:
     # 提取Token模式描述
     token_pattern = "类似XXX.XXX.XXX.XXX结构的多段字符串（如WTZ1.mmy9jbeq.9ddda7c9...）"
     
-    # 尝试提取具体的Token示例
+    # 尝试提取具体的Token示例 - 支持两种格式
+    # 格式1: Token: WTZ1.mmy9jbeq.9ddda7c9.a8ec0500ab2a670d183ad79db79e91be456ff31fb58e06e7d86d311427e2a13478eba28e
     token_match = re.search(r'Token[:\s]+([\w\.]+)', user_request, re.IGNORECASE)
+    
+    # 格式2: token:04d635d2ccea813cf9f7645cbd974dcb4a797edc21894e9be2d948f1b033574a104027da8b9e94a0c7dd025801e64a02f2a5c89b76c10cb031d724cd38f7316af6dde84bda0b6ad7226d98ebd12be31408ccee3bede2de61b130f4ab15255213eae113373ad015f489aece2b
+    if not token_match:
+        token_match = re.search(r'token:([0-9a-f]+)', user_request, re.IGNORECASE)
+    
     if token_match:
         token_example = token_match.group(1)
-        token_pattern = f"类似{token_example}的结构（多段由点号分隔的字符串）"
+        if '.' in token_example:
+            token_pattern = f"类似{token_example}的结构（多段由点号分隔的字符串）"
+        else:
+            token_pattern = f"类似{token_example}的结构（长字符串，可能是加密或哈希结果）"
     
     print(f"目标Token模式: {token_pattern}")
     
@@ -168,7 +187,7 @@ def variable_analyzer_node(state: AgentState) -> AgentState:
         
         # 使用LLM分析当前上下文并决策
         print("使用LLM分析上下文并决策...")
-        llm_decision = analyze_with_llm(current_code, current_vars, token_pattern, action_history)
+        llm_decision = analyze_with_llm(current_code, current_vars, token_pattern, action_history, user_request)
         print(f"LLM决策: {llm_decision}")
         
         # 检查是否找到

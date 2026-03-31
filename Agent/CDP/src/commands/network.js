@@ -113,9 +113,20 @@ class NetworkCommand {
           if (requestDetails.callStack) {
             console.log('\n📋 调用栈:');
             console.log('--------------------------------------------------');
-            requestDetails.callStack.forEach((frame, index) => {
+
+            // 解析调用栈中的scriptId为实际URL
+            const resolvedFrames = await this.debugger.resolveCallStackUrls(requestDetails.callStack);
+
+            resolvedFrames.forEach((frame, index) => {
               const functionName = frame.functionName || '(匿名函数)';
-              const location = frame.url ? `${frame.url}:${frame.lineNumber + 1}:${frame.columnNumber + 1}` : 'unknown';
+              let url = frame.url;
+
+              // 如果URL是script:xxx格式，尝试显示更友好的信息
+              if (url && url.startsWith('script:') && frame.scriptId) {
+                url = frame.url; // 保持原样，但已经通过resolveCallStackUrls解析过了
+              }
+
+              const location = url ? `${url}:${(frame.lineNumber || 0) + 1}:${(frame.columnNumber || 0) + 1}` : 'unknown';
               console.log(`  ${index}. ${functionName} (${location})`);
             });
             console.log('--------------------------------------------------');

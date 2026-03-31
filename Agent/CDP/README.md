@@ -27,8 +27,16 @@ Start-Process -FilePath C:\\Program Files\\Google\\Chrome\\Application\\chrome.e
 Start-Process -FilePath "D:\Projects\debug_tool\CDP\chrome-win64\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "D:\Projects\Dagent\Agent\WebPage\index.html"
 
 Start-Process -FilePath "D:\Projects\debug_tool\CDP\chrome-win64\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "D:\Projects\Dagent\Agent\WebPage\index.html"
-```
 
+Start-Process -FilePath "D:\Projects\debug_tool\CDP\chrome-win64\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "https://yngwypt.zmnyjk.com/#/"
+
+Start-Process -FilePath "D:\Projects\debug_tool\CDP\chrome-win64\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "D:\Projects\Dagent\Agent\ybs\1.html"
+
+Start-Process -FilePath "C:\Users\lenovo\AppData\Local\Google\Chrome\Application\chrome.exe" -ArgumentList "--remote-debugging-port=9222", "--remote-allow-origins=*", "D:\Projects\Dagent\Agent\ybs\1.html"
+```
+node bin/cli.js click start
+
+node bin/cli.js breakpoint-seq "s.accountSubmit (chunk-858ed276.7bbb8c3f.js:12:106286)"               
 
 Stop-Process -Name chrome -Force -ErrorAction SilentlyContinue
 

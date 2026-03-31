@@ -1,0 +1,193 @@
+调试变量导出报告
+==================
+导出时间: 2026/3/26 14:11:03
+==================
+
+this
+====
+无法获取: 对象引用链过长
+
+局部变量
+====
+_0x56d: "1"
+_0x57e: "2930386138@qq.com"
+_0x58f: "1"
+_0x59g: 1774505430662
+_0x60h: Object {
+  canonical: "v=WTZ1|ts=1774505430662|nl=1|el=17|cl=1|n=1|e=2930386138@qq.com|c=1",
+  mixed: "1::0386138@qq.com293::1::2660345054771",
+  folded: "670d183ad79db79e7a157651b290f6d234140c6e4baa89a697740a6709f1dfefc027532d01b19ab68735163a00b991fbd2302c066b4da88299896618361bfeceb2cd3e0d6e5db190f9db3f107457bbe2b091d17d523149a38ae2cd270f6e41a487e0dc3a187c5ebe9effd6"
+}
+_0x61i: "4b2306c4"
+_0x62j: "910b2b19"
+_0x63k: "WTZ1||v=WTZ1|ts=1774505430662|nl=1|el=17|cl=1|n=1|e=2930386138@qq.com|c=1||1::0386138@qq.com293::1::2660345054771||670d183ad79db79e7a157651b290f6d234140c6e4baa89a697740a6709f1dfefc027532d01b19ab68735163a00b991fbd2302c066b4da88299896618361bfeceb2cd3e0d6e5db190f9db3f107457bbe2b091d17d523149a38ae2cd270f6e41a487e0dc3a187c5ebe9effd6||4b2306c4||910b2b19||alive-template::contact-form::v1"
+_0x64l: "e1965253a1a8a248c45241da0c109aaa61cd83d78c6e3cb590e1e2b5c1c002c4"
+_0x65m: "[无法访问]"
+_0x66n: "[无法访问]"
+_0x67o: "[无法访问]"
+
+闭包变量
+====
+_0x9i: "WTZ1"
+_0x10j: "alive-template::contact-form::v1"
+_0x11k: 300000
+_0x12l: Object {
+  type: "function",
+  name: "_0x12l",
+  length: 1
+}
+_0x14n: Object {
+  type: "function",
+  name: "_0x14n",
+  length: 1
+}
+_0x16p: Object {
+  type: "function",
+  name: "_0x16p",
+  length: 1
+}
+_0x18r: Object {
+  type: "function",
+  name: "_0x18r",
+  length: 2
+}
+_0x22v: Object {
+  type: "function",
+  name: "_0x22v",
+  length: 1
+}
+_0x28b: Object {
+  type: "function",
+  name: "_0x28b",
+  length: 1
+}
+_0x32f: Object {
+  type: "function",
+  name: "_0x32f",
+  length: 2
+}
+_0x37k: Object {
+  type: "function",
+  name: "_0x37k",
+  length: 1
+}
+_0x43q: Object {
+  type: "function",
+  name: "_0x43q",
+  length: 4
+}
+_0x55c: Object {
+  type: "function",
+  name: "_0x55c",
+  length: 4
+}
+_0x68p: Object {
+  type: "function",
+  name: "_0x68p",
+  length: 5
+}
+_0x78z: Object {
+  type: "function",
+  name: "_0x78z",
+  length: 2
+}
+
+全局变量
+====
+window: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+self: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+document: Object {
+  type: "object",
+  constructor: "HTMLDocument",
+  isArray: false
+}
+name: "[无法访问]"
+location: Object {
+  type: "object",
+  constructor: "Location",
+  isArray: false
+}
+customElements: Object {
+  type: "object",
+  constructor: "CustomElementRegistry",
+  isArray: false
+}
+history: Object {
+  type: "object",
+  constructor: "History",
+  isArray: false,
+  length: 1
+}
+navigation: Object {
+  type: "object",
+  constructor: "Navigation",
+  isArray: false
+}
+locationbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+menubar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+personalbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+scrollbars: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+statusbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+toolbar: Object {
+  type: "object",
+  constructor: "BarProp",
+  isArray: false
+}
+status: "[无法访问]"
+closed: "[无法访问]"
+frames: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+length: "[无法访问]"
+top: Object {
+  type: "object",
+  constructor: "Window",
+  isArray: false,
+  length: 0
+}
+opener: "[无法访问]"
+
+函数参数
+====
+note: "CDP版本不支持直接获取函数参数"
+
+调用信息
+====
+文件: script:11
+行号: 209
+列号: 16
+函数名: _0x55c
+
